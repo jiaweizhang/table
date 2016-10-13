@@ -41,6 +41,11 @@ architecture table_rtl of table is
 	-- 52-bit bus for value to be stored into first register
 	signal first_value: std_logic_vector(51 downto 0);
 	
+	-- registers module goes here
+	--
+	-- Takes clock, write_enable, first_value
+	-- Emits reg_output
+	
 	
 	-- comparison module goes here
 	--
@@ -50,7 +55,7 @@ architecture table_rtl of table is
 	
 	-- compute module goes here
 	--
-	-- Takes reg_output, comparison_result, FSM state, (SA/DA for first_value)
+	-- Takes reg_output, comparison_result, FSM state, SA/DA [for first_value]
 	-- Emits write_enable, first_value, destination_port
 	
 	
@@ -58,5 +63,7 @@ architecture table_rtl of table is
 	--
 	-- Takes trigger
 	-- Emits output_ready, input_ready
+	
+	begin 
 	
 end table_rtl;
