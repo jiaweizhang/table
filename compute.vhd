@@ -11,6 +11,8 @@ entity compute is port(
 end compute;
 
 architecture compute_rtl of compute is
+	signal compare_result_binary: natural;
+
 	begin
 	
 	-- perform thermometer encoding
@@ -26,75 +28,81 @@ architecture compute_rtl of compute is
 	end process;
 	
 	-- perform first_value selection
-	process (cpt_compare_result, cpt_reg_output_address)
+	process (compare_result_binary, cpt_reg_output_address)
 	begin
+		cpt_first_value <= cpt_reg_output_address(compare_result_binary);
+	end process;
+	
+	process (cpt_compare_result)
+	begin
+		-- TODO may want to flip if not fast enough
 		if (cpt_compare_result(31) = '1') then
-			cpt_first_value <= cpt_reg_output_address(31); 
+			compare_result_binary <= 31;
 		elsif (cpt_compare_result(30) = '1') then
-			cpt_first_value <= cpt_reg_output_address(30);
+			compare_result_binary <= 30;
 		elsif (cpt_compare_result(29) = '1') then
-			cpt_first_value <= cpt_reg_output_address(29);
+			compare_result_binary <= 29;
 		elsif (cpt_compare_result(28) = '1') then
-			cpt_first_value <= cpt_reg_output_address(28);
+			compare_result_binary <= 28;
 		elsif (cpt_compare_result(27) = '1') then
-			cpt_first_value <= cpt_reg_output_address(27);
+			compare_result_binary <= 27;
 		elsif (cpt_compare_result(26) = '1') then
-			cpt_first_value <= cpt_reg_output_address(26);
+			compare_result_binary <= 26;
 		elsif (cpt_compare_result(25) = '1') then
-			cpt_first_value <= cpt_reg_output_address(25);
+			compare_result_binary <= 25;
 		elsif (cpt_compare_result(24) = '1') then
-			cpt_first_value <= cpt_reg_output_address(24);
+			compare_result_binary <= 24;
 		elsif (cpt_compare_result(23) = '1') then
-			cpt_first_value <= cpt_reg_output_address(23);
+			compare_result_binary <= 23;
 		elsif (cpt_compare_result(22) = '1') then
-			cpt_first_value <= cpt_reg_output_address(22);
+			compare_result_binary <= 22;
 		elsif (cpt_compare_result(21) = '1') then
-			cpt_first_value <= cpt_reg_output_address(21);
+			compare_result_binary <= 21;
 		elsif (cpt_compare_result(20) = '1') then
-			cpt_first_value <= cpt_reg_output_address(20);
+			compare_result_binary <= 20;
 		elsif (cpt_compare_result(19) = '1') then
-			cpt_first_value <= cpt_reg_output_address(19);
+			compare_result_binary <= 19;
 		elsif (cpt_compare_result(18) = '1') then
-			cpt_first_value <= cpt_reg_output_address(18);
+			compare_result_binary <= 18;
 		elsif (cpt_compare_result(17) = '1') then
-			cpt_first_value <= cpt_reg_output_address(17);
+			compare_result_binary <= 17;
 		elsif (cpt_compare_result(16) = '1') then
-			cpt_first_value <= cpt_reg_output_address(16);
+			compare_result_binary <= 16;
 		elsif (cpt_compare_result(15) = '1') then
-			cpt_first_value <= cpt_reg_output_address(15);
+			compare_result_binary <= 15;
 		elsif (cpt_compare_result(14) = '1') then
-			cpt_first_value <= cpt_reg_output_address(14);
+			compare_result_binary <= 14;
 		elsif (cpt_compare_result(13) = '1') then
-			cpt_first_value <= cpt_reg_output_address(13);
+			compare_result_binary <= 13;
 		elsif (cpt_compare_result(12) = '1') then
-			cpt_first_value <= cpt_reg_output_address(12);
+			compare_result_binary <= 12;
 		elsif (cpt_compare_result(11) = '1') then
-			cpt_first_value <= cpt_reg_output_address(11);
+			compare_result_binary <= 11;
 		elsif (cpt_compare_result(10) = '1') then
-			cpt_first_value <= cpt_reg_output_address(10);
+			compare_result_binary <= 10;
 		elsif (cpt_compare_result(9) = '1') then
-			cpt_first_value <= cpt_reg_output_address(9);
+			compare_result_binary <= 9;
 		elsif (cpt_compare_result(8) = '1') then
-			cpt_first_value <= cpt_reg_output_address(8);
+			compare_result_binary <= 8;
 		elsif (cpt_compare_result(7) = '1') then
-			cpt_first_value <= cpt_reg_output_address(7);
+			compare_result_binary <= 7;
 		elsif (cpt_compare_result(6) = '1') then
-			cpt_first_value <= cpt_reg_output_address(6);
+			compare_result_binary <= 6;
 		elsif (cpt_compare_result(5) = '1') then
-			cpt_first_value <= cpt_reg_output_address(5);
+			compare_result_binary <= 5;
 		elsif (cpt_compare_result(4) = '1') then
-			cpt_first_value <= cpt_reg_output_address(4);
+			compare_result_binary <= 4;
 		elsif (cpt_compare_result(3) = '1') then
-			cpt_first_value <= cpt_reg_output_address(3);
+			compare_result_binary <= 3;
 		elsif (cpt_compare_result(2) = '1') then
-			cpt_first_value <= cpt_reg_output_address(2);
+			compare_result_binary <= 2;
 		elsif (cpt_compare_result(1) = '1') then
-			cpt_first_value <= cpt_reg_output_address(1);
+			compare_result_binary <= 1;
 		elsif (cpt_compare_result(0) = '1') then
-			cpt_first_value <= cpt_reg_output_address(0);
+			compare_result_binary <= 0;
 		else
 			-- if no valid comparison, simply select most recent
-			cpt_first_value <= cpt_reg_output_address(31);		
+			compare_result_binary <= 31;
 		end if;
 	end process;
 	
