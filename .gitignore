@@ -62,3 +62,6 @@
 ## tbd
 
 !*.tcl
+
+# linq scripts
+!*.linq
