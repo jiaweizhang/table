@@ -1,6 +1,7 @@
 library ieee;
+library my_lib;
 use ieee.std_logic_1164.all;
-use work.data_types.all;
+use my_lib.data_types.all;
 
 entity compare is port(
 	cmp_address_to_compare: in std_logic_vector(47 downto 0);

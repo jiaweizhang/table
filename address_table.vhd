@@ -1,8 +1,9 @@
 library ieee;
+library my_lib;
 use ieee.std_logic_1164.all;
-use work.data_types.all;
+use my_lib.data_types.all;
 
-entity table is port(
+entity address_table is port(
 	-- 50 MHz clock
 	clock: in std_logic;
 	-- asynchronous clear
@@ -32,9 +33,9 @@ entity table is port(
 	monitor_access: out std_logic
 	);
 
-end table;
+end address_table;
 
-architecture table_rtl of table is	
+architecture address_table_rtl of address_table is	
 	-- 32-bit bus for register write-enable
 	signal write_enable: std_logic_vector(31 downto 0);
 	-- 32 52-bit bus for register output
@@ -187,4 +188,4 @@ architecture table_rtl of table is
 		end if;
 	end process;
 	
-end table_rtl;
+end address_table_rtl;

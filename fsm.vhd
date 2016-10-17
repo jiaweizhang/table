@@ -1,6 +1,7 @@
 library ieee;
+library my_lib;
 use ieee.std_logic_1164.all;
-use work.data_types.all;
+use my_lib.data_types.all;
 
 entity fsm is port (
 	fsm_clock: in std_logic;

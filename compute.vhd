@@ -1,6 +1,7 @@
 library ieee;
+library my_lib;
 use ieee.std_logic_1164.all;
-use work.data_types.all;
+use my_lib.data_types.all;
 
 entity compute is port(
 	cpt_reg_output_address: in reg_output_type;

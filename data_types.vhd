@@ -1,3 +1,4 @@
+-- synthesis library my_lib
 library ieee;
 use ieee.std_logic_1164.all;
 
