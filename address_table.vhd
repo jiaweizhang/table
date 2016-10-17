@@ -30,12 +30,26 @@ entity address_table is port(
 	monitor_not_found: out std_logic;
 	-- signal showing access (read and write)
 	-- guaranteed active for single cycle only
-	monitor_access: out std_logic
+	monitor_access: out std_logic;
+	
+	
+	
+	-- test ports
+	t_write_enable: out std_logic_vector(31 downto 0);
+	t_compare_result: out std_logic_vector(31 downto 0);
+	t_first_value: out std_logic_vector(51 downto 0)
 	);
 
 end address_table;
 
 architecture address_table_rtl of address_table is	
+	-- 48-bit bus that contains latched SA
+	signal latched_source_address: std_logic_vector(47 downto 0);
+	-- 4-bit bus that contains latched SP
+	signal latched_source_port: std_logic_vector(3 downto 0);
+	-- 48-bit bus that contains latched DA
+	signal latched_destination_address: std_logic_vector(47 downto 0);
+
 	-- 32-bit bus for register write-enable
 	signal write_enable: std_logic_vector(31 downto 0);
 	-- 32 52-bit bus for register output
@@ -152,7 +166,7 @@ architecture address_table_rtl of address_table is
 	
 	-- upon changing state, 
 	-- first_value changes
-	process (state_reg, compute_output, destination_address, not_found, source_address, source_port)
+	process (state_reg, compute_output, latched_destination_address, not_found, latched_source_address, latched_source_port)
 	begin
 		case state_reg is
 			when reset_state => 
@@ -166,16 +180,30 @@ architecture address_table_rtl of address_table is
 				-- compute_output
 				first_value <= compute_output;
 				-- compare destination address
-				address_to_compare <= destination_address;
+				address_to_compare <= latched_destination_address;
 				monitor_not_found <= not_found;
 				monitor_access <= '1';
 			when write_state =>
-				first_value <= source_address & source_port;
+				first_value <= latched_source_address & latched_source_port;
 				-- compare source address
-				address_to_compare <= source_address;
+				address_to_compare <= latched_source_address;
 				monitor_not_found <= '0';
 				monitor_access <= '0';
 		end case;
+	end process;
+	
+	-- latch inputs
+	process (clock, reset, source_address, source_port, destination_address)
+	begin
+		if (reset = '1') then
+			latched_source_address <= (47 downto 0 => '0');
+			latched_source_port <= (3 downto 0 => '0');
+			latched_destination_address <= (47 downto 0 => '0');
+		elsif (clock'event and clock = '1') then
+			latched_source_address <= source_address;
+			latched_source_port <= source_port;
+			latched_destination_address <= destination_address;
+		end if;
 	end process;
 	
 	-- determine whether comparison output = 0
@@ -186,6 +214,14 @@ architecture address_table_rtl of address_table is
 		else
 			not_found <= '0';
 		end if;
+	end process;
+	
+	-- test outputs
+	process (write_enable, compare_result, first_value)
+	begin
+		t_write_enable <= write_enable;
+		t_compare_result <= compare_result;
+		t_first_value <= first_value;
 	end process;
 	
 end address_table_rtl;
