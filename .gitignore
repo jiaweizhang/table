@@ -66,3 +66,6 @@
 # linq scripts
 !*.linq
 !/linq_scripts
+
+# test waveforms
+!*.vwf
