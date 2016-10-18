@@ -122,6 +122,7 @@ architecture address_table_rtl of address_table is
 		fsm_reset: in std_logic;
 		fsm_trigger: in std_logic;
 		fsm_compute_output: in std_logic_vector(3 downto 0);
+		fsm_not_found: in std_logic;
 		fsm_state: out state_type;
 		fsm_input_ready: out std_logic;
 		fsm_output_ready: out std_logic;
@@ -164,6 +165,7 @@ architecture address_table_rtl of address_table is
 			fsm_input_ready => input_ready,
 			fsm_output_ready => output_ready,
 			fsm_compute_output => compute_output(3 downto 0),
+			fsm_not_found => not_found,
 			fsm_destination_port => destination_port
 		);
 

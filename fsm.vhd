@@ -8,6 +8,7 @@ entity fsm is port (
 	fsm_reset: in std_logic;
 	fsm_trigger: in std_logic;
 	fsm_compute_output: in std_logic_vector(3 downto 0);
+	fsm_not_found: in std_logic;
 	fsm_state: out state_type;
 	fsm_input_ready: out std_logic;
 	fsm_output_ready: out std_logic;
@@ -28,7 +29,11 @@ architecture fsm_rtl of fsm is
 		elsif (fsm_clock'event and fsm_clock = '1') then
 			state_reg <= state_next;
 		elsif (fsm_clock'event and fsm_clock = '0') then
-			fsm_destination_port <= fsm_compute_output;
+			if (fsm_not_found = '1') then
+				fsm_destination_port <= "1111";
+			else
+				fsm_destination_port <= fsm_compute_output;
+			end if;
 		end if;
 	end process;
 
