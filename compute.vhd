@@ -4,6 +4,7 @@ use ieee.std_logic_1164.all;
 use my_lib.data_types.all;
 
 entity compute is port(
+	cpt_state: in state_type;
 	cpt_reg_output_address: in reg_output_type;
 	cpt_compare_result: in std_logic_vector(31 downto 0);
 	cpt_first_value: out std_logic_vector(51 downto 0);
@@ -19,17 +20,32 @@ architecture compute_rtl of compute is
 	-- perform thermometer encoding
 	-- try out or_reduce
 	-- http://electronics.stackexchange.com/questions/85922/vhdl-or-ing-bits-of-a-vector-together
-	process(cpt_compare_result)
+	process(cpt_compare_result, cpt_state)
 	begin
-		-- always write to first register
-		cpt_write_enable(31) <= '1';
-		for thermo_it in 0 to 30 loop
-			if (cpt_compare_result(thermo_it downto 0) = (thermo_it downto 0 => '0')) then
-				cpt_write_enable(thermo_it) <= '0';
-			else
-				cpt_write_enable(thermo_it) <= '1';
-			end if;
-		end loop;
+		case cpt_state is
+			when reset_state =>
+				cpt_write_enable <= (31 downto 0 => '0');
+			when read_state => 
+				for thermo_it in 0 to 31 loop
+					if (cpt_compare_result(thermo_it downto 0) = (thermo_it downto 0 => '0')) then
+						cpt_write_enable(thermo_it) <= '0';
+					else
+						cpt_write_enable(thermo_it) <= '1';
+					end if;
+				end loop;
+			when write_state =>
+				if (cpt_compare_result = (31 downto 0 => '0')) then
+					cpt_write_enable <= (31 downto 0 => '1');
+				else
+					for thermo_it in 0 to 31 loop
+						if (cpt_compare_result(thermo_it downto 0) = (thermo_it downto 0 => '0')) then
+							cpt_write_enable(thermo_it) <= '0';
+						else
+							cpt_write_enable(thermo_it) <= '1';
+						end if;
+					end loop;
+				end if;
+		end case;
 	end process;
 	
 	-- perform first_value selection

@@ -21,14 +21,14 @@ architecture fsm_rtl of fsm is
 	
 	begin
 	
-	-- TODO unsure if we added fsm_compute_output to sensitivity list
 	process (fsm_clock, fsm_reset, fsm_compute_output)
 	begin
-		fsm_destination_port <= fsm_compute_output;
 		if (fsm_reset = '1') then
 			state_reg <= reset_state;
 		elsif (fsm_clock'event and fsm_clock = '1') then
 			state_reg <= state_next;
+		elsif (fsm_clock'event and fsm_clock = '0') then
+			fsm_destination_port <= fsm_compute_output;
 		end if;
 	end process;
 

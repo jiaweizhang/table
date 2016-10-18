@@ -112,6 +112,7 @@ architecture address_table_rtl of address_table is
 	-- Takes reg_output, comparison_result, FSM state, SA/DA [for first_value]
 	-- Emits write_enable, first_value, destination_port
 	component compute port(
+		cpt_state: in state_type;
 		cpt_reg_output_address: in reg_output_type;
 		cpt_compare_result: in std_logic_vector(31 downto 0);
 		cpt_first_value: out std_logic_vector(51 downto 0);
@@ -154,6 +155,7 @@ architecture address_table_rtl of address_table is
 		
 		-- compute port mapping
 		compute_inst: compute port map(
+			cpt_state => state_reg,
 			cpt_reg_output_address => reg_output,
 			cpt_compare_result => compare_result,
 			cpt_first_value => compute_output,
@@ -194,14 +196,14 @@ architecture address_table_rtl of address_table is
 				address_to_compare <= latched_destination_address;
 				monitor_not_found <= not_found;
 				monitor_access <= '1';
-				write_enable <= (31 downto 0 => '0');
+				write_enable <= calculated_write_enable;
 			when write_state =>
 				first_value <= double_latched_source_address & double_latched_source_port;
 				-- compare source address
 				address_to_compare <= double_latched_source_address;
 				monitor_not_found <= '0';
 				monitor_access <= '0';
-				write_enable <= calculated_write_enable;
+				write_enable <= '1' & calculated_write_enable(30 downto 0);
 		end case;
 	end process;
 	

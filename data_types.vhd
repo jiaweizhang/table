@@ -2,6 +2,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
+-- http://quartushelp.altera.com/14.0/mergedProjects/hdl/vhdl/vhdl_pro_libraries.htm
 package data_types is 
      type state_type is
 		(reset_state, 
