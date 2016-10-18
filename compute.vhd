@@ -18,7 +18,6 @@ architecture compute_rtl of compute is
 	begin
 	
 	-- perform thermometer encoding
-	-- try out or_reduce
 	-- http://electronics.stackexchange.com/questions/85922/vhdl-or-ing-bits-of-a-vector-together
 	process(cpt_compare_result, cpt_state)
 	begin

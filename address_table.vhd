@@ -19,6 +19,7 @@ entity address_table is port(
 	trigger: in std_logic;
 	
 	-- one-hot encoded destination port (0-3)
+	-- only valid upon pos edge of output_ready
 	destination_port: out std_logic_vector(3 downto 0);
 	-- signal showing output is valid (single clock cycle)
 	output_ready: out std_logic;
@@ -30,15 +31,7 @@ entity address_table is port(
 	monitor_not_found: out std_logic;
 	-- signal showing access (read and write)
 	-- guaranteed active for single cycle only
-	monitor_access: out std_logic;
-	
-	
-	
-	-- test ports
-	t_write_enable: out std_logic_vector(31 downto 0);
-	t_compare_result: out std_logic_vector(31 downto 0);
-	t_first_value: out std_logic_vector(51 downto 0);
-	t_compute_output: out std_logic_vector(51 downto 0)
+	monitor_access: out std_logic
 	);
 
 end address_table;
@@ -241,15 +234,6 @@ architecture address_table_rtl of address_table is
 		else
 			not_found <= '0';
 		end if;
-	end process;
-	
-	-- test outputs
-	process (write_enable, compare_result, first_value, compute_output)
-	begin
-		t_write_enable <= write_enable;
-		t_compare_result <= compare_result;
-		t_compute_output <= compute_output;
-		t_first_value <= first_value;
 	end process;
 	
 end address_table_rtl;
