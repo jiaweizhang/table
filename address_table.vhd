@@ -37,7 +37,8 @@ entity address_table is port(
 	-- test ports
 	t_write_enable: out std_logic_vector(31 downto 0);
 	t_compare_result: out std_logic_vector(31 downto 0);
-	t_first_value: out std_logic_vector(51 downto 0)
+	t_first_value: out std_logic_vector(51 downto 0);
+	t_compute_output: out std_logic_vector(51 downto 0)
 	);
 
 end address_table;
@@ -49,7 +50,15 @@ architecture address_table_rtl of address_table is
 	signal latched_source_port: std_logic_vector(3 downto 0);
 	-- 48-bit bus that contains latched DA
 	signal latched_destination_address: std_logic_vector(47 downto 0);
+	
+	-- 48-bit bus that contains double-latched SA
+	signal double_latched_source_address: std_logic_vector(47 downto 0);
+	-- 4-bit bus that contains double-latched SP
+	signal double_latched_source_port: std_logic_vector(3 downto 0);
 
+	
+	-- 32-bit bus for calculated register write-enable
+	signal calculated_write_enable: std_logic_vector(31 downto 0);
 	-- 32-bit bus for register write-enable
 	signal write_enable: std_logic_vector(31 downto 0);
 	-- 32 52-bit bus for register output
@@ -92,7 +101,7 @@ architecture address_table_rtl of address_table is
 	-- Emits comparison_result
 	component compare port(
 		cmp_address_to_compare: in std_logic_vector(47 downto 0);
-		cmp_reg_output_address: reg_output_type;
+		cmp_reg_output_address: in reg_output_type;
 		cmp_compare_result: out std_logic_vector(31 downto 0)
 		);
 	end component;
@@ -148,7 +157,7 @@ architecture address_table_rtl of address_table is
 			cpt_reg_output_address => reg_output,
 			cpt_compare_result => compare_result,
 			cpt_first_value => compute_output,
-			cpt_write_enable => write_enable
+			cpt_write_enable => calculated_write_enable
 		);
 		
 		-- fsm port mapping
@@ -166,7 +175,8 @@ architecture address_table_rtl of address_table is
 	
 	-- upon changing state, 
 	-- first_value changes
-	process (state_reg, compute_output, latched_destination_address, not_found, latched_source_address, latched_source_port)
+	process (state_reg, compute_output, latched_destination_address, not_found, 
+		double_latched_source_address, double_latched_source_port, calculated_write_enable)
 	begin
 		case state_reg is
 			when reset_state => 
@@ -176,6 +186,7 @@ architecture address_table_rtl of address_table is
 				address_to_compare <= (47 downto 0 => '0');
 				monitor_not_found <= '0';
 				monitor_access <= '0';
+				write_enable <= (31 downto 0 => '0');
 			when read_state =>
 				-- compute_output
 				first_value <= compute_output;
@@ -183,12 +194,14 @@ architecture address_table_rtl of address_table is
 				address_to_compare <= latched_destination_address;
 				monitor_not_found <= not_found;
 				monitor_access <= '1';
+				write_enable <= (31 downto 0 => '0');
 			when write_state =>
-				first_value <= latched_source_address & latched_source_port;
+				first_value <= double_latched_source_address & double_latched_source_port;
 				-- compare source address
-				address_to_compare <= latched_source_address;
+				address_to_compare <= double_latched_source_address;
 				monitor_not_found <= '0';
 				monitor_access <= '0';
+				write_enable <= calculated_write_enable;
 		end case;
 	end process;
 	
@@ -206,6 +219,18 @@ architecture address_table_rtl of address_table is
 		end if;
 	end process;
 	
+	-- double latch inputs
+	process (clock, reset, latched_source_address, latched_source_port) 
+	begin
+		if (reset = '1') then
+			double_latched_source_address <= (47 downto 0 => '0');
+			double_latched_source_port <= (3 downto 0 => '0');
+		elsif (clock'event and clock ='1') then
+			double_latched_source_address <= latched_source_address;
+			double_latched_source_port <= latched_source_port;
+		end if;
+	end process;
+	
 	-- determine whether comparison output = 0
 	process (compare_result)
 	begin
@@ -217,10 +242,11 @@ architecture address_table_rtl of address_table is
 	end process;
 	
 	-- test outputs
-	process (write_enable, compare_result, first_value)
+	process (write_enable, compare_result, first_value, compute_output)
 	begin
 		t_write_enable <= write_enable;
 		t_compare_result <= compare_result;
+		t_compute_output <= compute_output;
 		t_first_value <= first_value;
 	end process;
 	

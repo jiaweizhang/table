@@ -21,7 +21,9 @@ architecture compute_rtl of compute is
 	-- http://electronics.stackexchange.com/questions/85922/vhdl-or-ing-bits-of-a-vector-together
 	process(cpt_compare_result)
 	begin
-		for thermo_it in 0 to 31 loop
+		-- always write to first register
+		cpt_write_enable(31) <= '1';
+		for thermo_it in 0 to 30 loop
 			if (cpt_compare_result(thermo_it downto 0) = (thermo_it downto 0 => '0')) then
 				cpt_write_enable(thermo_it) <= '0';
 			else

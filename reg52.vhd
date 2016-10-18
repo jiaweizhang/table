@@ -2,11 +2,11 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 entity reg52 is port(
-	reg52_in: in std_logic_vector;
+	reg52_in: in std_logic_vector(51 downto 0);
 	reg52_clock: in std_logic;
 	reg52_reset: in std_logic;
 	reg52_write_enable: in std_logic;
-	reg52_out: out std_logic_vector
+	reg52_out: out std_logic_vector(51 downto 0)
 	);
 end reg52;
 

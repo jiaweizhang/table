@@ -5,7 +5,7 @@ use my_lib.data_types.all;
 
 entity compare is port(
 	cmp_address_to_compare: in std_logic_vector(47 downto 0);
-	cmp_reg_output_address: reg_output_type;
+	cmp_reg_output_address: in reg_output_type;
 	cmp_compare_result: out std_logic_vector(31 downto 0)
 	);
 end compare;
