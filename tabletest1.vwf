@@ -2811,7 +2811,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "source_port";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 52;
 	TREE_LEVEL = 0;
 	CHILDREN = 53, 54, 55, 56;
@@ -2821,7 +2821,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "source_port[3]";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 53;
 	TREE_LEVEL = 1;
 	PARENT = 52;
@@ -2831,7 +2831,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "source_port[2]";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 54;
 	TREE_LEVEL = 1;
 	PARENT = 52;
@@ -2841,7 +2841,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "source_port[1]";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 55;
 	TREE_LEVEL = 1;
 	PARENT = 52;
@@ -2851,7 +2851,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "source_port[0]";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 56;
 	TREE_LEVEL = 1;
 	PARENT = 52;
@@ -3351,7 +3351,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "destination_port";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 106;
 	TREE_LEVEL = 0;
 	CHILDREN = 107, 108, 109, 110;
@@ -3361,7 +3361,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "destination_port[3]";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 107;
 	TREE_LEVEL = 1;
 	PARENT = 106;
@@ -3371,7 +3371,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "destination_port[2]";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 108;
 	TREE_LEVEL = 1;
 	PARENT = 106;
@@ -3381,7 +3381,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "destination_port[1]";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 109;
 	TREE_LEVEL = 1;
 	PARENT = 106;
@@ -3391,7 +3391,7 @@ DISPLAY_LINE
 {
 	CHANNEL = "destination_port[0]";
 	EXPAND_STATUS = COLLAPSED;
-	RADIX = Unsigned;
+	RADIX = Binary;
 	TREE_INDEX = 110;
 	TREE_LEVEL = 1;
 	PARENT = 106;
