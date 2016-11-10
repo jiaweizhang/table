@@ -102,27 +102,12 @@ architecture address_table_hardware_test_rtl of address_table_hardware_test is
 				internal_trigger <= '0';
 		end case;
 	end process;
-	
-	--process(test_state)
-	--begin
-	--	case test_state is
-	--		when reset_state =>
-	--			test_destination_port <= "1000";
-	--		when seen_state =>
-	--			test_destination_port <= "0100";
-	--		when final_state =>
-	--			test_destination_port <= "0010";
-	--	end case;
-	--end process;
 		
-	process (test_clock, internal_output_ready, internal_trigger, test_state_next)
+	process (test_clock, internal_output_ready, internal_destination_port)
 	begin
-		--test_not_found <= internal_output_ready;
-		--if (test_clock'event and test_clock = '1' and internal_output_ready = '1') then
 		if (internal_output_ready'event and internal_output_ready = '1') then
-			-- latch output
+			-- latch output upon pos output_ready
 			test_destination_port <= internal_destination_port;
-			--test_not_found <= internal_trigger;
 			test_not_found <= internal_destination_port(3) and internal_destination_port(2) and internal_destination_port(1) and internal_destination_port(0);
 		end if;
 	end process;
