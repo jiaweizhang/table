@@ -37,8 +37,8 @@
 # -------------------------------------------------------------------------- #
 
 
-set_global_assignment -name FAMILY "Cyclone IV E"
-set_global_assignment -name DEVICE AUTO
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CEBA4F23C7
 set_global_assignment -name TOP_LEVEL_ENTITY address_table_hardware_test
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 16.0.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "18:15:48  OCTOBER 17, 2016"
@@ -59,4 +59,25 @@ set_global_assignment -name VHDL_FILE compare.vhd
 set_global_assignment -name VHDL_FILE address_table.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE tabletest1.vwf
 set_global_assignment -name VHDL_FILE address_table_hardware_test.vhd
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_location_assignment PIN_U7 -to test_push_pin
+set_location_assignment PIN_L1 -to test_not_found
+set_location_assignment PIN_M9 -to test_clock
+set_location_assignment PIN_AA2 -to test_destination_port[0]
+set_location_assignment PIN_AA1 -to test_destination_port[1]
+set_location_assignment PIN_W2 -to test_destination_port[2]
+set_location_assignment PIN_Y3 -to test_destination_port[3]
+set_location_assignment PIN_U13 -to test_source_port[0]
+set_location_assignment PIN_V13 -to test_source_port[1]
+set_location_assignment PIN_T13 -to test_source_port[2]
+set_location_assignment PIN_T12 -to test_source_port[3]
+set_location_assignment PIN_M6 -to test_reset
+set_location_assignment PIN_AB12 -to test_source_address[2]
+set_location_assignment PIN_AB13 -to test_source_address[1]
+set_location_assignment PIN_AA13 -to test_source_address[0]
+set_location_assignment PIN_AA14 -to test_destination_address[2]
+set_location_assignment PIN_AB15 -to test_destination_address[1]
+set_location_assignment PIN_AA15 -to test_destination_address[0]
+set_global_assignment -name VECTOR_WAVEFORM_FILE output_files/HardwareTest.vwf
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
