@@ -69,3 +69,9 @@
 
 # test waveforms
 !*.vwf
+
+# go files
+!*.go
+!/goscripts
+
+.idea/

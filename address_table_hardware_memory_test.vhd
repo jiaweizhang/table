@@ -1,6 +1,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity address_table_hardware_memory_test is port(
 	-- can be configured to either be manual pushbutton or 50MHz FPGA clock
@@ -68,6 +69,17 @@ architecture address_table_hardware_memory_test_rtl of address_table_hardware_me
 	);
 	end component;
 	
+	-- Memory hardware test initial ROM file
+	-- addresses 0-1023 contain inputs and expected outputs
+
+	-- each address is 128 bits and take the following format:
+	-- [47:0] is the source_address
+	-- [95:48] is the destination_address
+	-- [99:96] is the source_port
+	-- [103:100] is the expected destination_port
+	-- [104] is the expected monitor_access
+	-- [105] is the expected monitor_not_found
+	-- [127:106] are empty (0)
 	component hardware_memory port
 	(
 		address: IN STD_LOGIC_VECTOR (9 DOWNTO 0);
@@ -110,7 +122,7 @@ architecture address_table_hardware_memory_test_rtl of address_table_hardware_me
 	process(hwtest_clock, counter)
 	begin
 		if (hwtest_clock'event and hwtest_clock = '1') then
-			counter <= std_logic_vector(to_unsigned(to_integer(unsigned(counter)) + 1, 8));
+			counter <= counter + '1';
 		end if;
 	end process;
 	
@@ -129,14 +141,14 @@ architecture address_table_hardware_memory_test_rtl of address_table_hardware_me
 	begin
 		if (hwtest_clock'event and hwtest_clock = '0') then
 			if (counter(2 downto 0) = "111") then
-				current_address <= std_logic_vector(to_unsigned(to_integer(unsigned(current_address)) + 1, 10));
+				current_address <= current_address + '1';
 			elsif (counter(2 downto 0) = "110") then
 				if (detected_access /= current_access) then
 					-- add 1 to access_incorrect counter
-					counter_access_incorrect <= std_logic_vector(to_unsigned(to_integer(unsigned(counter_access_incorrect)) + 1, 8));
+					counter_access_incorrect <= counter_access_incorrect + '1';
 				end if;
 				if (detected_not_found /= current_not_found) then
-					counter_not_found_incorrect <= std_logic_vector(to_unsigned(to_integer(unsigned(counter_not_found_incorrect)) + 1, 8));
+					counter_not_found_incorrect <= counter_not_found_incorrect + '1';
 				end if;
 			elsif (counter(2 downto 0) = "010") then
 				internal_trigger <= '1';
@@ -153,12 +165,12 @@ architecture address_table_hardware_memory_test_rtl of address_table_hardware_me
 			if (internal_access = '1') then
 				detected_access <= '1';
 				-- add 1 to access_counter
-				counter_access <= std_logic_vector(to_unsigned(to_integer(unsigned(counter_access)) + 1, 8));
+				counter_access <= counter_access + '1';
 			end if;
 			if (internal_not_found ='1') then
 				detected_not_found <= '1';
 				-- add 1 to not_found_counter
-				counter_not_found <= std_logic_vector(to_unsigned(to_integer(unsigned(counter_not_found)) + 1, 8));
+				counter_not_found <= counter_not_found + '1';
 			end if;
 		end if;
 	end process;
@@ -168,7 +180,7 @@ architecture address_table_hardware_memory_test_rtl of address_table_hardware_me
 	begin
 		if (internal_output_ready'event and internal_output_ready = '1') then
 			if (current_destination_port /= internal_destination_port) then
-				counter_destination_incorrect <= std_logic_vector(to_unsigned(to_integer(unsigned(counter_destination_incorrect)) + 1, 8));
+				counter_destination_incorrect <= counter_destination_incorrect + '1';
 			end if;
 		end if;
 	end process;
