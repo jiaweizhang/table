@@ -16,6 +16,7 @@ entity address_table_hardware_test is port(
 );
 end address_table_hardware_test;
 
+architecture address_table_hardware_test_rtl of address_table_hardware_test is
 
 	type test_state_type is
 		(reset_state,
