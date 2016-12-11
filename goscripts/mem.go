@@ -68,6 +68,9 @@ func main() {
 	c(133, 133, "1000", "1000", true, false)
 	c(133, 133, "1000", "1000", true, false)
 	c(133, 133, "1000", "1000", true, false)
+	for (counter < 1024) {
+		c(133, 133, "1000", "1000", true, false)
+	}
 
 	f.WriteString("\n")
 	f.WriteString("END\n")
