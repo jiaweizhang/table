@@ -63,9 +63,18 @@
 
 !*.tcl
 
+!*.mif
+
 # linq scripts
 !*.linq
 !/linq_scripts
 
 # test waveforms
 !*.vwf
+
+# go files
+!*.go
+!/goscripts
+
+.idea/
+*.iml
