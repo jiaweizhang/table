@@ -361,19 +361,19 @@ The memory-based test has a hardware interface defined in table ~\ref{tab:test2}
         \begin{tabular}{lll}\hline
         Signal & Type & In/Out \\
         \hline
-        \texttt{hwtest\_clock} & std\_logic & Out \\
+        \texttt{hwtest\_clock} & std\_logic & In \\
         \hline
-        \texttt{hwtest\_reset} & std\_logic & Out \\
+        \texttt{hwtest\_reset} & std\_logic & In \\
         \hline
-        \texttt{hwtest\_access\_count} & std\_logic\_vector(7 downto 0) \\
+        \texttt{hwtest\_access\_count} & std\_logic\_vector(7 downto 0) & Out \\
         \hline
-        \texttt{hwtest\_not\_found\_count} & std\_logic\_vector(7 downto 0) \\
+        \texttt{hwtest\_not\_found\_count} & std\_logic\_vector(7 downto 0) & Out \\
         \hline
-        \texttt{hwtest\_access\_incorrect} & std\_logic\_vector(7 downto 0) \\
+        \texttt{hwtest\_access\_incorrect} & std\_logic\_vector(7 downto 0) & Out \\
         \hline
-        \texttt{hwtest\_not\_found\_incorrect} & std\_logic\_vector(7 downto 0) \\
+        \texttt{hwtest\_not\_found\_incorrect} & std\_logic\_vector(7 downto 0) & Out \\
         \hline
-        \texttt{hwtest\_destination\_port\_incorrect} & std\_logic\_vector(7 downto 0) \\
+        \texttt{hwtest\_destination\_port\_incorrect} & std\_logic\_vector(7 downto 0) & Out \\
         \hline
         \end{tabular}
         \caption{Memory-based Test Format}\label{tab:test2}
