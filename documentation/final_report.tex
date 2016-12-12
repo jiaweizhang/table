@@ -28,7 +28,7 @@ The table subsystem is designed with modularity and ease-of-use in mind. The imp
 
 The table subsystem receives all of its input signals from the forwarding subsystem and outputs signals to forwarding and monitoring (through forwarding). Table~\ref{tab:a} shows the signal names of the inter-subsystem interface. The interface is defined in \texttt{address\_table.vhd}.
 
-\begin{table}[h]
+\begin{table}[ht]
     \begin{center}
         \begin{tabular}{lrll}\hline
         Signal & Width & In/Out & Used By \\
@@ -98,10 +98,10 @@ In order to simplify implementation of the table subsystem, the subsystem was ab
 
 \subsubsection{Register Chain Module}
 
-The register chain module consists of 32 52-bit register files, each of which stores a 48-bit MAC address and a 4-bit port. The module takes a 32-bit write-enable signal to control the write-enables for each of the 52-bit register files. the module also takes a 52-bit input for the left-most register. The only output is a 32 by 52 vector array of the contents of the register files in the register chain. The register chain module implementation is in \texttt{register\_chain.vhd}. Table~\ref{tab:reg} shows the signal names of the inter-subsystem interface. 
+The register chain module consists of 32 52-bit register files, each of which stores a 48-bit MAC address and a 4-bit port. The module takes a 32-bit write-enable signal to control the write-enables for each of the 52-bit register files. the module also takes a 52-bit input for the left-most register. The only output is a 32 by 52 vector array of the contents of the register files in the register chain. The register chain module implementation is in \texttt{register\_chain.vhd}. Table~\ref{tab:reg} shows the signal names of the intra-subsystem interface. 
 
 
-\begin{table}[h]
+\begin{table}[ht]
     \begin{center}
         \begin{tabular}{lll}\hline
         Signal & Type & In/Out \\
@@ -131,19 +131,276 @@ The \texttt{rc\_reg\_output} signal is a subtype of \texttt{array (0 to 31) of s
 
 \subsubsection{Compare Module}
 
+The compare module is used to match address with the contents of the register chain. The address matched could either be the source address or the destination address. The module implementation can be found in \texttt{compare.vhd}. Table~\ref{tab:compare} shows the signal names of the intra-subsystem interface. 
+
+
+\begin{table}[ht]
+    \begin{center}
+        \begin{tabular}{lll}\hline
+        Signal & Type & In/Out \\
+        \hline
+        \texttt{cmp\_address\_to\_compare} & std\_logic\_vector(47 downto 0) & In \\
+        \hline
+        \texttt{cmp\_reg\_output\_address} & reg\_output\_type & In \\
+        \hline
+        \texttt{cmp\_compare\_result} & std\_logic\_vector(31 downto 0) & Out \\
+        \hline
+        \end{tabular}
+        \caption{Compare Interface}\label{tab:compare}
+    \end{center}
+\end{table}
+
+The \texttt{cmp\_address\_to\_compare} signal is a 48-bit vector which contains the address which we are comparing the register chain addresses to. 
+
+The \texttt{cmp\_reg\_output\_address} is of type \texttt{reg\_output\_type} which is a 32 by 52 bit two-dimensional vector that is the output of the register chain module. The 48 MAC address bits of each 52 bit vector is being compared to the \texttt{cmp\_address\_to\_compare} signal. 
+
+The \texttt{cmp\_compare\_result} is a 32 bit output which asserts which register files' addresses match the \texttt{cmp\_address\_to\_compare}. By design of the register chain, there can only be one match or zero matches. The 31st bit of the output represents the comparison result of the left-most register file and the 1st bit of the output represents the comparison result of the right-most register file.
+
 \subsubsection{Compute Module}
 
-\subsubsection{FSM Module}
+The compute module is used to determine the 52-bit \texttt{first\_value} and 32-bit \texttt{write\_enable} input signals for the register chain. To perform this calculation, it uses the current state of the FSM (described in section \ref{fsm}), the 32 by 52 bit two-dimensional output of the register chain, and the 32-bit comparison result calculated by the compare module. The module implementation can be found in \texttt{compute.vhd}. Table~\ref{tab:compute} shows the signal names of the intra-subsystem interface. 
+
+\begin{table}[ht]
+    \begin{center}
+        \begin{tabular}{lll}\hline
+        Signal & Type & In/Out \\
+        \hline
+        \texttt{cpt\_state} & state\_type & In \\
+        \hline
+        \texttt{cpt\_reg\_output\_address} & reg\_output\_type & In \\
+        \hline
+        \texttt{cpt\_compare\_result} & std\_logic\_vector(31 downto 0) & In \\
+        \hline
+        \texttt{cpt\_first\_value} & std\_logic\_vector(51 downto 0) & Out \\
+        \hline
+        \texttt{cpt\_write\_enable} & std\_logic\_vector(31 downto 0) & Out \\
+        \hline
+        \end{tabular}
+        \caption{Compute Interface}\label{tab:compute}
+    \end{center}
+\end{table}
+
+The \texttt{cpt\_state} signal represents the current state of the FSM as defined in section \ref{fsm}. The possible states are \texttt{reset\_state}, \texttt{read\_state}, and \texttt{write\_state}. The compute module outputs different signals depending on whether we are in the reset (idle), load (reset), or store (write) states.
+
+The \texttt{cpt\_reg\_output\_address} signal is simply the output of the register chain as previously defined.
+
+The \texttt{cpt\_first\_value} signal is a 52-bit vector that is the input to the register chain. It represents the value that should be written into the left-most register file. This value only holds significance in the read state (load) as the write state (store) simply uses the new address and port. This value is the address stored at the register file where the match was found. Generating this signal was the most technically challenging aspect of the entire project. Three different designs were implemented and one was selected in the end.
+
+\begin{enumerate}
+\item
+The selected design (third and final design) took advantage of a large amount of parallel hardware. First, a 32 by 52 bit two-dimensional vector (same size as register chain output) was generated. Each of the 52-bit vectors in this temporary signal was set to all 1s if the $i$th \texttt{cpt\_compare\_result} value was asserted. If the $i$th value was not asserted, the temporary signal at that index was simply all 0s. Then, for each of the 52 indices in the 52-bit vectors, all 32 bits at the index (0 to 51) were OR'd together to generate a 52-bit \texttt{cpt\_first\_value} output. 
+\item
+Another design (second design) converted the 32-bit \texttt{cpt\_compare\_result} from its one-hot encoding (only up to one match can be found) into a natural number. This conversion was performed using an \texttt{if-else} chain where each bit from 31 to 0 was compared to 1 and the corresponding natural number was returned. In the case where there was no match (address not found), the number 31 was returned, but this value has no significance as the value is not used when no match is found (we don't do anything to the register chain when we don't find an address in load and we store the new address and port in a store operation). The natural number was then used to select a 52-bit vector by index using VHDL language constructs. 
+\item
+The original design was similar to the second described design except that the \texttt{cpt\_first\_value} was directly assigned in each body of the \texttt{if-else} chain, resulting in significantly increased logic gate usage. 
+\end{enumerate}
+
+In the end, the three designs were compared using compilation time and logic gate usage as metrics. The second design used the fewest logic gates, but had a significantly (2 times) longer compilation time, so the first design was used. The third (original) design was worse by every metric. 
+
+The \texttt{cpt\_write\_enable} signal is a 32-bit vector that leads to the register chain write-enable signal. This signal is state-dependent. In the reset state, the signal is simply all 0s. In the read state, we assert all the bits left of the asserted bit in the \texttt{cpt\_compare\_result} vector, inclusive. This way, we overwrite all the register files left of and including the register file where we found the address matching the destination address. Note that the implementation still works when none of the \texttt{cpt\_compare\_result} vector bits are asserted since then none of the \texttt{cpt\_write\_enable} bits will be asserted, which is the expected behavior. In the write state, asserting all the bits left of the asserted bit in the \texttt{cpt\_compare\_result} vector still works when we do find a match. The write state differs from the read state when we do not find the address. In the write state, when we do not find the address, we simply assert every bit in the \texttt{cpt\_write\_enable} vector since all register chain contents will be shifted to make room for the new address and the least recently used address to port mapping will be evicted.
+
+\subsubsection{FSM Module} \label{fsm}
+
+The \texttt{FSM} module is responsible for outputting control signals and latching outputs to be output at the correct times. The state output of the FSM is used in other modules to determine which datapaths to use. The three possible states are reset (table is idle and awaiting trigger), read (table is trying to find the destination address and return a port), and write (table is storing the new source address and port). The module implementation can be found in \texttt{fsm.vhd}. Table~\ref{tab:fsm} shows the signal names of the intra-subsystem interface. 
+
+\begin{table}[ht]
+    \begin{center}
+        \begin{tabular}{lll}\hline
+        Signal & Type & In/Out \\
+        \hline
+        \texttt{fsm\_clock} & std\_logic & In \\
+        \hline
+        \texttt{fsm\_reset} & std\_logic & In \\
+        \hline
+        \texttt{fsm\_trigger} & std\_logic & In \\
+        \hline
+        \texttt{fsm\_compute\_output} & std\_logic\_vector(3 downto 0) & In \\
+        \hline
+        \texttt{fsm\_not\_found} & std\_logic & In \\
+        \hline
+        \texttt{fsm\_state} & state\_type & Out \\
+        \hline
+        \texttt{fsm\_input\_ready} & std\_logic & Out \\
+        \hline
+        \texttt{fsm\_output\_ready} & std\_logic & Out \\
+        \hline
+        \texttt{fsm\_destination\_port} & std\_logic\_vector(3 downto 0) & Out \\
+        \hline
+        \end{tabular}
+        \caption{FSM Interface}\label{tab:fsm}
+    \end{center}
+\end{table}
+
+The \texttt{fsm\_clock} and \texttt{fsm\_reset} signals are passed to the FSM module from the inter-subsystem interface. The positive clock edge is used to advance state (by assigning next state to current state) while the asynchronous reset signal is used to put the FSM back in the reset state. 
+
+The \texttt{fsm\_trigger} signal is also passed directly from the inter-subsystem interface and is used to determine the next state. When the FSM is in the reset state, if the \texttt{fsm\_trigger} signal is asserted, then the next state is the read state. If the \texttt{fsm\_trigger} signal is not asserted, then the next state is simply the reset state. These state transitions are covered in detail in Figure XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX TODO MAKE STATE TRANSITION
+
+The \texttt{fsm\_compute\_output} signal is the 4-bit vector representing the port found (as part of the 52 bit register file contents) during the read state within the compute module. It is used to generate and correctly latch the \texttt{fsm\_destination\_port} output signal.
+
+The \texttt{fsm\_not\_found} signal is calculated in the address table wrapper and is asserted when the compare module output is all 0s, showing that the destination address was not found. The \texttt{fsm\_not\_found} signal is used to set the destination port to "1111" when the destination address is not found.
+
+The \texttt{fsm\_state} signal is an output representing the current state. The state is used within the wrapper module as well as in the compute module.
+
+The \texttt{fsm\_input\_ready} signal is an output control signal asserting that the table is ready to process a new load-store operation. The signal is asserted when the FSM is in the reset state and de-asserted in the read and write states.
+
+The \texttt{fsm\_output\_ready} signal is an output control signal asserting that the table has generated a destination port. The signal is asserted when the FSM is in the write state. This seems incorrect, but the inter-subsystem interface defines the destination port being valid at the positive edge of the \texttt{output\_ready} signal and the destination port will not change during the read state to write state transition, so the port will be valid at this edge.
+
+The \texttt{fsm\_destination\_port} signal is the output signal that is exposed in the inter-subsystem interface. It is presented as a 4-bit one-hot encoded port if the destination address was successfully found and as "1111" if not found. Note that since this signal must be valid at the positive edge of the \texttt{output\_ready} signal which is directly triggered by the positive clock edge, we change the \texttt{destination\_port} signal on the negative clock edge so there are no race conditions. The value the signal takes on when we do find a destination address is simply the 4 port bits of the 52-bit register file contents that yielded a successful comparison with the destination address.
 
 \subsubsection{Address Table Module}
 
+The address table module is simply a wrapper that contains the inter-subsystem interface definitions in addition to the mappings and instantiations of all the intra-subsystem modules. The wrapper also takes care of certain functionalities that don't belong in any other modules, such as latching inputs and error correcting. The wrapper implementation can be found in \texttt{address\_table.vhd}.
+
+The main use of the wrapper module is to connect all the intra-subsystem modules together. The four modules instantiated in the wrapper are FSM, register-chain, compare, and compute. 
+
+The wrapper latches inputs in two layers. This is because we must keep the latched inputs (source address, source port, destination address) active for two clock cycles since the values must be valid for both the read state (first cycle) and write state (second cycle). This is performed using two sequentially chained latches with the output of the first latch used for the read state and the output of the second layer used for the write state.
+
+The wrapper is also used to perform some minor error correction. This "error correction" is more "error prevention" than strict error correction. One place this error prevention is used is during the assertion of asynchronous reset. When the \texttt{reset} signal is asserted, all other inputs are simply ignored and set to all 0s. Additionally, depending on state, certain module input signals and inter-subsystem interface signals are hardcoded, such as setting \texttt{write\_enable} to all 0s in the reset state and setting \texttt{monitor\_access} to 1 during only the read state. These signals should already have their hardcoded values, but this check simply ignores any potentially incorrect values, saving time in development. In a more strict production environment, these error prevention snippets would be removed and the output signals for the subsystems would be more vigorously tested.
+
 \section{Simulation Results}
 
-Alan/Diane/Phil
+A timing simulation was run on the full subsystem. Every input and output signal defined in the inter-subsystem interface was monitored. The basic simulation (Figure XXXXXXXXXXXXXXXXXXXXXXXXX) tested the following functionalities:
+
+\begin{enumerate}
+\item A stored address-port mapping can be retrieved a trigger-cycle after it is stored
+\item A stored address-port mapping can be retrieved multiple trigger-cycles after it is stored
+\item A stored address-port mapping can be replaced with a new port
+\item The destination port is valid upon the positive edge of the \texttt{output\_ready} signal
+\item The destination port shows "1111" when the address does not exist in the table
+\item \texttt{input\_ready} is asserted at the correct time
+\item \texttt{monitor\_access} and \texttt{monitor\_not\_found} are asserted during a positive clock edge
+\end{enumerate}
+
+A longer waveform simulation (Figure XXXXXXXXXXXXXXXXXXXX) was also performed and tested that addresses that are not read or written to (updated) are evicted from the table.
+
+In addition to simulating the full subsystem, the individual modules within the table subsystem were also simulated as a form of testing. 
+
+Alan/Diane/Phil do subsystem module simulations
+
 
 \section{Hardware Test Results}
 
-\section{Hardware Memory Test Results}
+Two separate testing utilities were implemented. The first was simply an interface with the DE0-CV FPGA inputs and outputs allowing the table functionality to be tested by a human. The second was a more sophisticated memory-based test that read inputs and expected outputs from a ROM with user-defined programatically generated values.
+
+\subsubsection{Human Interface Test}
+
+The human interface test was implemented to test the functionality of the table in hardware. The inter-subsystem interface inputs and outputs were all connected to signals in a test wrapper, which abstracted all the signals into hardware inputs and outputs. Table~\ref{tab:test1} shows the signal names of the hardware interface. The implementation of this test can be found in \texttt{address\_table\_hardware\_test}.  
+
+\begin{table}[ht]
+    \begin{center}
+        \begin{tabular}{lll}\hline
+        Signal & Type & In/Out \\
+        \hline
+        \texttt{test\_clock} & std\_logic & In \\
+        \hline
+        \texttt{test\_reset} & std\_logic & In \\
+        \hline
+        \texttt{test\_source\_address} & std\_logic\_vector(2 downto 0) & In \\
+        \hline
+        \texttt{test\_source\_port} & std\_logic\_vector(3 downto 0) & In \\
+        \hline
+        \texttt{test\_destination\_address} & std\_logic\_vector(2 downto 0) & In \\
+        \hline
+        \texttt{test\_push\_pin} & std\_logic & In \\
+        \hline
+        \texttt{test\_destination\_port} & std\_logic\_vector(3 downto 0) & Out \\
+        \hline
+        \texttt{test\_not\_found} & std\_logic & Out \\
+        \hline
+        \end{tabular}
+        \caption{Human-interface Test Interface}\label{tab:test1}
+    \end{center}
+\end{table}
+
+The \texttt{text\_clock} signal can either be wired to a push-pin to manually clock the table or to the 50 MHz FPGA clock. Using the 50 MHz FPGA clock means losing out on the transitions between the reset, read, and write states, but still behaves as expected in a "static" way, with the final resting state shown. 
+
+The \texttt{test\_reset} signal is wired to a push-pin and is used to reset the contents of the table.
+
+The \texttt{test\_source\_address}, \texttt{test\_source\_port}, and \texttt{test\_destination\_address} signals are wired to switches. The addresses are 3 bits wide each and the port is 4 bits wide to allow us to fully utilize the 10 available switches. The 3 bits simply represent the three least significant bits of the 48-bit MAC address.
+
+The \texttt{test\_push\_pin} signal is wired to a push-pin. This signal, which can be asserted for many cycles (for as long as a user holds it down), is "debounced" into a single negative edge clocked \texttt{trigger} signal which is used by the table. The debouncing is performed by an FSM which can be examined in detail by looking at the source file.
+
+The \texttt{test\_destination\_port} signal is the destination port output of the table and is latched at the positive edge of the \texttt{output\_ready} signal. This signal persists until the next latching of the signal. The output is displayed on four LEDs.
+
+The \texttt{test\_not\_found} signal is asserted when the all four bits of the \texttt{test\_destination\_port} signal are asserted, signifying that a destination address was not found.
+
+\subsubsection{Memory-based Test}
+
+While the human-interface test was sufficient for demonstrating that the table worked by manually setting inputs and validating outputs, it is not a reliable way of verifying operations such as eviction due to the huge number of operations and potential for human error. Because of this, a memory-based hardware test was designed and implemented to allow tests to be written using ROM.
+
+The memory-based test has a ROM module that contains 1024 rows of 128-bit data. Each row contains data in the format defined in table ~\ref{tab:rom}. 
+
+\begin{table}[ht]
+    \begin{center}
+        \begin{tabular}{lll}\hline
+        Bits & Input/Expected Output & Description \\
+        \hline
+        [47:0] & Input & \texttt{source\_address} \\
+        \hline
+        [95:48] & Input & \texttt{destination\_address} \\
+        \hline
+        [99:96] & Input & \texttt{source\_port} \\
+        \hline
+        [103:100] & Expected Output & \texttt{destination\_port} \\
+        \hline
+        [104] & Expected Output & \texttt{monitor\_access} \\
+        \hline
+        [105] & Expected Output & \texttt{monitor\_not\_found} \\
+        \hline
+        [127:106] & N/A & Empty (all 0s) \\
+        \hline
+        \end{tabular}
+        \caption{ROM Format}\label{tab:rom}
+    \end{center}
+\end{table}
+
+The memory-based test has a hardware interface defined in table ~\ref{tab:test2}
+
+\begin{table}[ht]
+    \begin{center}
+        \begin{tabular}{lll}\hline
+        Signal & Type & In/Out \\
+        \hline
+        \texttt{hwtest\_clock} & std\_logic & Out \\
+        \hline
+        \texttt{hwtest\_reset} & std\_logic & Out \\
+        \hline
+        \texttt{hwtest\_access\_count} & std\_logic\_vector(7 downto 0) \\
+        \hline
+        \texttt{hwtest\_not\_found\_count} & std\_logic\_vector(7 downto 0) \\
+        \hline
+        \texttt{hwtest\_access\_incorrect} & std\_logic\_vector(7 downto 0) \\
+        \hline
+        \texttt{hwtest\_not\_found\_incorrect} & std\_logic\_vector(7 downto 0) \\
+        \hline
+        \texttt{hwtest\_destination\_port\_incorrect} & std\_logic\_vector(7 downto 0) \\
+        \hline
+        \end{tabular}
+        \caption{Memory-based Test Format}\label{tab:test2}
+    \end{center}
+\end{table}
+
+The \texttt{hwtest\_clock} signal can either be connected to the 50 MHz clock or a manual push-pin clock. The \texttt{hwtest\_reset} signal should be wired to a push-pin.
+
+The \texttt{hwtest\_access\_count} signal is an 8-bit value (0-255) representing the number of times the table was accessed.
+
+The \texttt{hwtest\_not\_found\_count} signal is an 8-bit value representing the number of times the destination port was not found.
+
+The \texttt{hwtest\_access\_incorrect} signal is an 8-bit value representing the number of times the access signal from the table differed from expected.
+
+The \texttt{hwtest\_not\_found\_incorrect} signal is an 8-bit value representing the number of times the not-found signal from the table differed from expected.
+
+The \texttt{hwtest\_destination\_port\_incorrect} signal is an 8-bit value representing the number of times the \texttt{destination\_port} signal differed from expected.
+
+The memory-based test runs off a cycle-counter, which is a sequential circular FSM and an address-counter. The cycle-counter starts at 0 and increments once every clock cycle, but only the 3 least significant bits of the cycle-counter are considered. The ROM element takes the address-counter and clock as inputs and outputs a 128-bit vector which is dissected into all the inputs and expected outputs. The table \texttt{trigger} input is asserted at the negative clock edge in the second state of the cycle-counter. The signal is then de-asserted at the negative clock edge in the third state of the cycle-counter. At the negative edge of the seventh state of the cycle-counter, the address-counter is incremented so we can run the next load-store operation. 
+
+Since the \texttt{destination\_port} output of the table is only valid at the positive edge of the \texttt{output\_ready} output, the output at that point is compared to the expected destination port. If the value is different from expected, the \texttt{hwtest\_destination\_port\_incorrect} counter is incremented by one.
+
+The \texttt{hwtest\_access\_count} and \texttt{hwtest\_not\_found\_count} counters are incremented every time the \texttt{monitor\_access} and \texttt{monitor\_not\_found} signals, respectively, are asserted on the positive clock edge. 
+
+Since the \texttt{monitor\_access} and \texttt{monitor\_not\_found} signals can be asserted at any clock cycle between when the \texttt{trigger} signal is clocked and the \texttt{output\_ready} signal is asserted, we use a register to hold each of these values and latch an assertion if one occurs. These two registers are cleared on the positive clock edge in the first state of the cycle-counter. The registers are compared to the expected \texttt{access} and \texttt{not\_found} values on the negative clock edge of the sixth state of the cycle-counter.
+
+There exist a few more nuances that can be seen in the \texttt{address\_table\_hardware\_memory\_test.vhd} file.
 
 \section{Conclusion}
 
