@@ -1,0 +1,152 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{courier}
+\setlength{\parskip}{\baselineskip}%
+\setlength{\parindent}{0pt}%
+\title{ECE559 Table Final Report}
+\author{Jiawei Zhang, Alan Guo, Phil Foo, Diane Kim }
+\date{December 15, 2016}
+
+\begin{document}
+
+\maketitle
+
+\section{Summary}
+
+Alan/Diane/Phil
+
+\section{High-level Description}
+
+Alan/Diane/Phil
+
+\section{Design Description}
+
+The table subsystem is designed with modularity and ease-of-use in mind. The implementation takes advantage of VHDL language features including subtyping and keep memory and logic gate constraints in mind. 
+
+\subsection{Inter-subsystem Interface}
+
+The table subsystem receives all of its input signals from the forwarding subsystem and outputs signals to forwarding and monitoring (through forwarding). Table~\ref{tab:a} shows the signal names of the inter-subsystem interface. The interface is defined in \texttt{address\_table.vhd}.
+
+\begin{table}[h]
+    \begin{center}
+        \begin{tabular}{lrll}\hline
+        Signal & Width & In/Out & Used By \\
+        \hline
+        \texttt{clock} & 1 & In & Forwarding \\
+        \hline
+        \texttt{reset} & 1 & In & Forwarding \\
+        \hline
+        \texttt{source\_address} & 48 & In & Forwarding \\
+        \hline
+        \texttt{source}\_port & 4 & In & Forwarding \\
+        \hline
+        \texttt{destination\_address} & 48 & In & Forwarding \\
+        \hline
+        \texttt{trigger} & 1 & In & Forwarding \\
+        \hline
+        \texttt{destination\_port} & 4 & Out & Forwarding \\
+        \hline
+        \texttt{output\_ready} & 1 & Out & Forwarding \\
+        \hline
+        \texttt{input\_ready} & 1 & Out & Forwarding \\
+        \hline
+        \texttt{monitor\_access} & 1 & Out & Monitoring \\
+        \hline
+        \texttt{monitor\_not\_found} & 1 & Out & Monitoring \\
+        \hline
+        \end{tabular}
+        \caption{Table Inter-Subsystem Interface}\label{tab:a}
+    \end{center}
+\end{table}
+
+\subsubsection{Signal Description}
+
+The \texttt{clock} signal comes from the forwarding subsystem and is used to clock the FSMs and memory elements within the table subsystems. The positive \texttt{clock} edge also serves as a control signal to latch \texttt{source\_address}, \texttt{source\_port}, and \texttt{destination\_address} values when \texttt{trigger} is asserted. The maximum time required to perform a lookup and store operation is two clock cycles counted from the positive \texttt{clock} edge when the input trigger is asserted. The table subsystem is designed to work with the 50 MHz clock passed from forwarding, but any PLL divided clock signal will still work. 
+
+The \texttt{reset} signal is an active-high asynchronous clear that resets the all the stored destination address to 0 and all the stored one-hot destination port values to 0, which is designed to be an invalid value. 
+
+The \texttt{source\_address} signal is a 48-bit logic vector that represents a source MAC address. The signal is the key to be stored in the table and maps to a port. It is latched on the positive \texttt{clock} edge when \texttt{trigger} is asserted.
+
+The \texttt{source\_port} signal is a 4-bit logic vector that represents the source port. The logic vector is one-hot encoded. The vector can be used in the direction as forwarding wishes, with either port 1 mapping to the MSB or port 1 mapping to the LSB. The value is latched on the positive \texttt{clock} edge when \texttt{trigger} is asserted.
+
+The \texttt{destination\_address} signal is a 48-bit logic vector that represents a destination MAC address. The signal is the key used to look up a port in the table. It is latched on the positive \texttt{clock} edge when \texttt{trigger} is asserted.
+
+When the single-bit \texttt{trigger} signal is asserted and a positive \texttt{clock} edge occurs, the \texttt{source\_address}, \texttt{source\_port}, and \texttt{destination\_address} are latched. 
+
+The \texttt{destination\_port} signal is a 4-bit logic vector that represents the looked-up destination port. If the destination address is found, the destination port is returned in the same format as the source port was originally specified in. If the destination address is not found, the destination port takes on the hardcoded value "1111", which tells the forwarding subsystem to forward to all four ports. The \texttt{destination\_port} signal is only valid on the positive edge of the \texttt{output\_ready} signal.
+
+The \texttt{output\_ready} signal's positive edge denotes when the \texttt{destination\_port} signal contains a valid value or a not-found value ("1111"). The \texttt{output\_ready} signal is guaranteed to be asserted within two cycles of the \texttt{trigger} signal being asserted at a positive \texttt{clock} edge. 
+
+The \texttt{output\_ready} signal is asserted when the table is ready for a new load-store operation. This signal is guaranteed to be asserted within three cycles of the \texttt{trigger} signal being asserted at a positive \texttt{clock} edge. This signal can be disregarded if the \texttt{trigger} signals are asserted on positive \texttt{clock} edges at least three cycles apart. 
+
+The \texttt{monitor\_access} signal is used to show that a load-store operation has been performed. 
+
+The \texttt{monitor\_not\_found} signal is used to show that a destination address was not found in the table. This always occurs at least once during the operation of the table during the initial load-store operation since the value we are trying to load will not exist (unless we consider the MAC address 00-00-00-00-00-00 which will in practice not appear). For both \texttt{monitor\_access} and \texttt{monitor\_not\_found} signals, the signal is guaranteed to be asserted for no longer than a single clock cycle at a time and the signal should be considered only at the positive clock edge. For every load-store operation, the signals are guaranteed to be asserted at only one positive clock edge from the positive clock edge when the \texttt{trigger} is asserted to when the \texttt{input\_ready} signal is asserted.
+
+\subsection{Subsystem Design}
+
+The overall design of the table subsystem is completely original and no external sources were consulted besides VHDL language constructs. On a high level, a chain of 32 52-bit register files is used to store 52-bit vectors composed of 48-bit MAC address vectors and 4-bit port vectors. The register chain is essentially a shift register that shifts from the left-most (31st register file) to right-most (1st register file). For each load-store operation, the load is performed first, followed by the store. The load parallel-queries the 32 52-bit register files and compares the destination address with the 48-bit MAC addresses stored in the register files. If the address is found, the associated 4-bit port is returned and all the register files to the left of it plus itself assert their write-enable and take the value of the register file to the left. The left-most register file takes the value of the register-file where the destination address was found. If the address is not found, the port "1111" is returned and the table is not changed. This simulates an LRU function for the load operation. 
+
+The store operation behaves similarly. If the source address is found in the table, then the register file which the source address is found in has its source port updated. Then, like in the load operation, all register files to the left of itplus itself assert their write-enable and take the value of ther register file to the left. The left-most register file then takes the value of the register-file with the updated port. When the source address is not found in the table, then all register files have their write-enable asserted and the new source address and port and placed in the left-most register file. This operation evicts the least recently used address and port. Note that eviction can only occur on stores as the load operation always feeds the shifted-out value back into the left-most register file.
+
+\texttt{monitor\_access} is always asserted after the load operation commences. The \texttt{monitor\_not\_found} signal is asserted after the load operation is attempted and the address is not found.
+
+\subsection{Intra-subsystem Interfaces}
+
+In order to simplify implementation of the table subsystem, the subsystem was abstracted into several high-level modules. These modules each represent a fundamental portion of the table subsystem and they were partitioned with the simplicity of interfaces between them in mind. 
+
+\subsubsection{Register Chain Module}
+
+The register chain module consists of 32 52-bit register files, each of which stores a 48-bit MAC address and a 4-bit port. The module takes a 32-bit write-enable signal to control the write-enables for each of the 52-bit register files. the module also takes a 52-bit input for the left-most register. The only output is a 32 by 52 vector array of the contents of the register files in the register chain. The register chain module implementation is in \texttt{register\_chain.vhd}. Table~\ref{tab:reg} shows the signal names of the inter-subsystem interface. 
+
+
+\begin{table}[h]
+    \begin{center}
+        \begin{tabular}{lll}\hline
+        Signal & Type & In/Out \\
+        \hline
+        \texttt{rc\_clock} & std\_logic & In \\
+        \hline
+        \texttt{rc\_reset} & std\_logic & In \\
+        \hline
+        \texttt{rc\_first\_value} & std\_logic\_vector(51 downto 0) & In \\
+        \hline
+        \texttt{rc\_write\_enable} & std\_logic\_vector(31 downto 0) & In \\
+        \hline
+        \texttt{rc\_reg\_output} & reg\_output\_type & Out \\
+        \hline
+        \end{tabular}
+        \caption{Register Chain Interface}\label{tab:reg}
+    \end{center}
+\end{table}
+
+The \texttt{rc\_clock} and \texttt{rc\_reset} signals are the same signals as the inter-subsystem interface and are simply passed through. The positive clock edge is used to overwrite any register files that have the write-enable asserted. The reset signal clears the values stored in all 32 register files.
+
+The \texttt{rc\_first\_value} signal is the value that is being stored into the left-most register file. This signal holds a valid value when we are performing a load where we find the destination address we are looking for as well as in a store. 
+
+The \texttt{rc\_write\_enable} signal represents the 32 register files and is asserted for the register files we need to overwrite with the values in the register file to the left of them. 
+
+The \texttt{rc\_reg\_output} signal is a subtype of \texttt{array (0 to 31) of std\_logic\_vector(51 downto 0)} and is simply a 32 by 52 bit two dimensional vector. It outputs the contents of all 32 52-bit register files.
+
+\subsubsection{Compare Module}
+
+\subsubsection{Compute Module}
+
+\subsubsection{FSM Module}
+
+\subsubsection{Address Table Module}
+
+\section{Simulation Results}
+
+Alan/Diane/Phil
+
+\section{Hardware Test Results}
+
+\section{Hardware Memory Test Results}
+
+\section{Conclusion}
+
+Alan/Diane/Phil
+
+\end{document}

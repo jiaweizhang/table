@@ -76,5 +76,9 @@
 !*.go
 !/goscripts
 
+# tex files
+!*.tex
+!/documentation
+
 .idea/
 *.iml
