@@ -2,6 +2,9 @@
 \usepackage[utf8]{inputenc}
 \usepackage[margin=1in]{geometry}
 \usepackage{courier}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+
 \setlength{\parskip}{\baselineskip}%
 \setlength{\parindent}{0pt}%
 \title{ECE559 Table Final Report}
@@ -19,6 +22,8 @@ Alan/Diane/Phil
 \section{High-level Description}
 
 Alan/Diane/Phil
+
+\newpage
 
 \section{Design Description}
 
@@ -84,6 +89,7 @@ The \texttt{monitor\_access} signal is used to show that a load-store operation 
 
 The \texttt{monitor\_not\_found} signal is used to show that a destination address was not found in the table. This always occurs at least once during the operation of the table during the initial load-store operation since the value we are trying to load will not exist (unless we consider the MAC address 00-00-00-00-00-00 which will in practice not appear). For both \texttt{monitor\_access} and \texttt{monitor\_not\_found} signals, the signal is guaranteed to be asserted for no longer than a single clock cycle at a time and the signal should be considered only at the positive clock edge. For every load-store operation, the signals are guaranteed to be asserted at only one positive clock edge from the positive clock edge when the \texttt{trigger} is asserted to when the \texttt{input\_ready} signal is asserted.
 
+\newpage
 \subsection{Subsystem Design}
 
 The overall design of the table subsystem is completely original and no external sources were consulted besides VHDL language constructs. On a high level, a chain of 32 52-bit register files is used to store 52-bit vectors composed of 48-bit MAC address vectors and 4-bit port vectors. The register chain is essentially a shift register that shifts from the left-most (31st register file) to right-most (1st register file). For each load-store operation, the load is performed first, followed by the store. The load parallel-queries the 32 52-bit register files and compares the destination address with the 48-bit MAC addresses stored in the register files. If the address is found, the associated 4-bit port is returned and all the register files to the left of it plus itself assert their write-enable and take the value of the register file to the left. The left-most register file takes the value of the register-file where the destination address was found. If the address is not found, the port "1111" is returned and the table is not changed. This simulates an LRU function for the load operation. 
@@ -96,6 +102,7 @@ The store operation behaves similarly. If the source address is found in the tab
 
 In order to simplify implementation of the table subsystem, the subsystem was abstracted into several high-level modules. These modules each represent a fundamental portion of the table subsystem and they were partitioned with the simplicity of interfaces between them in mind. 
 
+\newpage
 \subsubsection{Register Chain Module}
 
 The register chain module consists of 32 52-bit register files, each of which stores a 48-bit MAC address and a 4-bit port. The module takes a 32-bit write-enable signal to control the write-enables for each of the 52-bit register files. the module also takes a 52-bit input for the left-most register. The only output is a 32 by 52 vector array of the contents of the register files in the register chain. The register chain module implementation is in \texttt{register\_chain.vhd}. Table~\ref{tab:reg} shows the signal names of the intra-subsystem interface. 
@@ -129,6 +136,16 @@ The \texttt{rc\_write\_enable} signal represents the 32 register files and is as
 
 The \texttt{rc\_reg\_output} signal is a subtype of \texttt{array (0 to 31) of std\_logic\_vector(51 downto 0)} and is simply a 32 by 52 bit two dimensional vector. It outputs the contents of all 32 52-bit register files.
 
+The RTL of the register chain is shown in Figure ~\ref{fig:regchain-rtl}. The RTL shows 32 52-bit register files chained together.
+
+\begin{figure}[ht!]
+  \centering
+    \includegraphics[width=0.5\textwidth]{register_chain_rtl.PNG}
+  \caption{RTL of Register Chain}
+  \label{fig:regchain-rtl}
+\end{figure}
+
+\newpage
 \subsubsection{Compare Module}
 
 The compare module is used to match address with the contents of the register chain. The address matched could either be the source address or the destination address. The module implementation can be found in \texttt{compare.vhd}. Table~\ref{tab:compare} shows the signal names of the intra-subsystem interface. 
@@ -156,6 +173,16 @@ The \texttt{cmp\_reg\_output\_address} is of type \texttt{reg\_output\_type} whi
 
 The \texttt{cmp\_compare\_result} is a 32 bit output which asserts which register files' addresses match the \texttt{cmp\_address\_to\_compare}. By design of the register chain, there can only be one match or zero matches. The 31st bit of the output represents the comparison result of the left-most register file and the 1st bit of the output represents the comparison result of the right-most register file.
 
+The RTL of the compare module is shown in Figure ~\ref{fig:compare-rtl}. The RTL shows 32 48-bit comparators in parallel.
+
+\begin{figure}[ht!]
+  \centering
+    \includegraphics[width=0.25\textwidth]{compare_rtl.PNG}
+  \caption{RTL of Compare Module}
+  \label{fig:compare-rtl}
+\end{figure}
+
+\newpage
 \subsubsection{Compute Module}
 
 The compute module is used to determine the 52-bit \texttt{first\_value} and 32-bit \texttt{write\_enable} input signals for the register chain. To perform this calculation, it uses the current state of the FSM (described in section \ref{fsm}), the 32 by 52 bit two-dimensional output of the register chain, and the 32-bit comparison result calculated by the compare module. The module implementation can be found in \texttt{compute.vhd}. Table~\ref{tab:compute} shows the signal names of the intra-subsystem interface. 
@@ -199,6 +226,16 @@ In the end, the three designs were compared using compilation time and logic gat
 
 The \texttt{cpt\_write\_enable} signal is a 32-bit vector that leads to the register chain write-enable signal. This signal is state-dependent. In the reset state, the signal is simply all 0s. In the read state, we assert all the bits left of the asserted bit in the \texttt{cpt\_compare\_result} vector, inclusive. This way, we overwrite all the register files left of and including the register file where we found the address matching the destination address. Note that the implementation still works when none of the \texttt{cpt\_compare\_result} vector bits are asserted since then none of the \texttt{cpt\_write\_enable} bits will be asserted, which is the expected behavior. In the write state, asserting all the bits left of the asserted bit in the \texttt{cpt\_compare\_result} vector still works when we do find a match. The write state differs from the read state when we do not find the address. In the write state, when we do not find the address, we simply assert every bit in the \texttt{cpt\_write\_enable} vector since all register chain contents will be shifted to make room for the new address and the least recently used address to port mapping will be evicted.
 
+The RTL of the compute module is shown in Figure ~\ref{fig:compute-rtl}. The RTL shows the parallel muxes for the first stage of the \texttt{first\_value} signal processing and OR gates for the second stage. For the \texttt{write\_enable} signal, the left-hot encoder is RTL'd into a series of comparators whose outputs feed into muxes. 
+
+\begin{figure}[ht!]
+  \centering
+    \includegraphics[width=0.75\textwidth]{compute_rtl.PNG}
+  \caption{RTL of Compute Module}
+  \label{fig:compute-rtl}
+\end{figure}
+
+\newpage
 \subsubsection{FSM Module} \label{fsm}
 
 The \texttt{FSM} module is responsible for outputting control signals and latching outputs to be output at the correct times. The state output of the FSM is used in other modules to determine which datapaths to use. The three possible states are reset (table is idle and awaiting trigger), read (table is trying to find the destination address and return a port), and write (table is storing the new source address and port). The module implementation can be found in \texttt{fsm.vhd}. Table~\ref{tab:fsm} shows the signal names of the intra-subsystem interface. 
@@ -233,7 +270,34 @@ The \texttt{FSM} module is responsible for outputting control signals and latchi
 
 The \texttt{fsm\_clock} and \texttt{fsm\_reset} signals are passed to the FSM module from the inter-subsystem interface. The positive clock edge is used to advance state (by assigning next state to current state) while the asynchronous reset signal is used to put the FSM back in the reset state. 
 
-The \texttt{fsm\_trigger} signal is also passed directly from the inter-subsystem interface and is used to determine the next state. When the FSM is in the reset state, if the \texttt{fsm\_trigger} signal is asserted, then the next state is the read state. If the \texttt{fsm\_trigger} signal is not asserted, then the next state is simply the reset state. These state transitions are covered in detail in Figure XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX TODO MAKE STATE TRANSITION
+The \texttt{fsm\_trigger} signal is also passed directly from the inter-subsystem interface and is used to determine the next state. When the FSM is in the reset state, if the \texttt{fsm\_trigger} signal is asserted, then the next state is the read state. If the \texttt{fsm\_trigger} signal is not asserted, then the next state is simply the reset state. These state transitions are covered in detail in Figure ~\ref{fig:fsm-transition}. The state transition diagram shows how the \texttt{trigger} input affects the next-state. Note that the next-state becomes the current state only upon the positive clock edge, so the only point in time the \texttt{trigger} is relevant is during the positive clock edge.
+
+\begin{figure}[ht!]
+  \centering
+    \includegraphics[width=0.75\textwidth]{fsm_updated_state_transition_diagram.PNG}
+  \caption{FSM State Transition Diagram}
+  \label{fig:fsm-transition}
+\end{figure}
+
+For clarity, Table ~\ref{tab:fsm-table} shows the transition cases in tabular form.
+
+\begin{table}[ht]
+    \begin{center}
+        \begin{tabular}{lll}\hline
+        Source State & Destination State & Condition \\
+        \hline
+        reset & reset & trigger = 0 and positive clock edge \\
+        \hline
+        reset & read & trigger = 1 and positive clock edge \\
+        \hline
+        read & write & positive clock edge \\
+        \hline
+        write & reset & positive clock edge \\
+        \hline
+        \end{tabular}
+        \caption{FSM Transition Table}\label{tab:fsm-table}
+    \end{center}
+\end{table}
 
 The \texttt{fsm\_compute\_output} signal is the 4-bit vector representing the port found (as part of the 52 bit register file contents) during the read state within the compute module. It is used to generate and correctly latch the \texttt{fsm\_destination\_port} output signal.
 
@@ -247,6 +311,16 @@ The \texttt{fsm\_output\_ready} signal is an output control signal asserting tha
 
 The \texttt{fsm\_destination\_port} signal is the output signal that is exposed in the inter-subsystem interface. It is presented as a 4-bit one-hot encoded port if the destination address was successfully found and as "1111" if not found. Note that since this signal must be valid at the positive edge of the \texttt{output\_ready} signal which is directly triggered by the positive clock edge, we change the \texttt{destination\_port} signal on the negative clock edge so there are no race conditions. The value the signal takes on when we do find a destination address is simply the 4 port bits of the 52-bit register file contents that yielded a successful comparison with the destination address.
 
+The RTL of the FSM is shown in Figure ~\ref{fig:fsm-rtl}. The RTL is fairly self-explanatory and most importantly contains the state register which stores the current state of the FSM.
+
+\begin{figure}[ht!]
+  \centering
+    \includegraphics[width=1.0\textwidth]{fsm_rtl.PNG}
+  \caption{RTL of FSM}
+  \label{fig:fsm-rtl}
+\end{figure}
+
+\newpage
 \subsubsection{Address Table Module}
 
 The address table module is simply a wrapper that contains the inter-subsystem interface definitions in addition to the mappings and instantiations of all the intra-subsystem modules. The wrapper also takes care of certain functionalities that don't belong in any other modules, such as latching inputs and error correcting. The wrapper implementation can be found in \texttt{address\_table.vhd}.
@@ -257,6 +331,16 @@ The wrapper latches inputs in two layers. This is because we must keep the latch
 
 The wrapper is also used to perform some minor error correction. This "error correction" is more "error prevention" than strict error correction. One place this error prevention is used is during the assertion of asynchronous reset. When the \texttt{reset} signal is asserted, all other inputs are simply ignored and set to all 0s. Additionally, depending on state, certain module input signals and inter-subsystem interface signals are hardcoded, such as setting \texttt{write\_enable} to all 0s in the reset state and setting \texttt{monitor\_access} to 1 during only the read state. These signals should already have their hardcoded values, but this check simply ignores any potentially incorrect values, saving time in development. In a more strict production environment, these error prevention snippets would be removed and the output signals for the subsystems would be more vigorously tested.
 
+The RTL for the entire subsystem is shown in Figure ~\ref{fig:table-rtl}. The RTL shows all the internal modules in addition to the processes that occur in the wrapper itself.
+
+\begin{figure}[ht!]
+  \centering
+    \includegraphics[width=0.5\textwidth]{table_rtl.PNG}
+  \caption{RTL of Table Subsystem}
+  \label{fig:table-rtl}
+\end{figure}
+
+\newpage
 \section{Simulation Results}
 
 A timing simulation was run on the full subsystem. Every input and output signal defined in the inter-subsystem interface was monitored. The basic simulation (Figure XXXXXXXXXXXXXXXXXXXXXXXXX) tested the following functionalities:
@@ -312,7 +396,7 @@ The human interface test was implemented to test the functionality of the table 
     \end{center}
 \end{table}
 
-The \texttt{text\_clock} signal can either be wired to a push-pin to manually clock the table or to the 50 MHz FPGA clock. Using the 50 MHz FPGA clock means losing out on the transitions between the reset, read, and write states, but still behaves as expected in a "static" way, with the final resting state shown. 
+The \texttt{text\_clock} signal can either be wired to a push-pin to manually clock the table or to the 50 MHz FPGA clock. Using the 50 MHz FPGA clock means losing out on the transitions between the reset, read, and write states, but still behaves just like in the static way, with the final resting state shown. 
 
 The \texttt{test\_reset} signal is wired to a push-pin and is used to reset the contents of the table.
 

@@ -65,6 +65,10 @@
 
 !*.mif
 
+!/images
+!*.png
+!*.jpg
+
 # linq scripts
 !*.linq
 !/linq_scripts

@@ -141,7 +141,11 @@ architecture address_table_hardware_memory_test_rtl of address_table_hardware_me
 	begin
 		if (hwtest_clock'event and hwtest_clock = '0') then
 			if (counter(2 downto 0) = "111") then
-				current_address <= current_address + '1';
+				if (current_address = "1111111111") then
+					current_address <= current_address;
+				else
+					current_address <= current_address + '1';
+				end if;
 			elsif (counter(2 downto 0) = "110") then
 				if (detected_access /= current_access) then
 					-- add 1 to access_incorrect counter
