@@ -922,7 +922,8 @@ TRANSITION_LIST("hwtest_reset")
 	NODE
 	{
 		REPEAT = 1;
-		LEVEL 0 FOR 20000.0;
+		LEVEL 1 FOR 1600.0;
+		LEVEL 0 FOR 18400.0;
 	}
 }
 

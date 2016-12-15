@@ -91,7 +91,7 @@ architecture address_table_hardware_memory_test_rtl of address_table_hardware_me
 	begin
 		address_table_inst: address_table port map(
 			clock => hwtest_clock,
-			reset => '0',
+			reset => hwtest_reset,
 			source_address => current_source_address,
 			source_port => current_source_port,
 			destination_address => current_destination_address,
@@ -119,9 +119,11 @@ architecture address_table_hardware_memory_test_rtl of address_table_hardware_me
 	end process;
 	
 	-- 8-bit clock counter
-	process(hwtest_clock, counter)
+	process(hwtest_clock, counter, hwtest_reset)
 	begin
-		if (hwtest_clock'event and hwtest_clock = '1') then
+		if (hwtest_reset = '1') then
+			counter <= "00000000";
+		elsif (hwtest_clock'event and hwtest_clock = '1') then
 			counter <= counter + '1';
 		end if;
 	end process;
@@ -132,14 +134,16 @@ architecture address_table_hardware_memory_test_rtl of address_table_hardware_me
 	-- 3rd neg edge -> deassert trigger
 	-- 1st pos edge -> reset detected access or not_found
 	-- 6th neg edge -> process access_incorrect and not_found_incorrect
-	process(hwtest_clock, counter, current_address,
+	process(hwtest_clock, hwtest_reset, counter, current_address,
 		detected_access, current_access, detected_not_found, current_not_found,
 		internal_access, internal_not_found,
 		counter_access_incorrect, counter_not_found_incorrect,
 		counter_access, counter_not_found
 		)
 	begin
-		if (hwtest_clock'event and hwtest_clock = '0') then
+		if (hwtest_reset = '1') then
+			current_address <= "0000000000";
+		elsif (hwtest_clock'event and hwtest_clock = '0') then
 			if (counter(2 downto 0) = "111") then
 				if (current_address = "1111111111") then
 					current_address <= current_address;

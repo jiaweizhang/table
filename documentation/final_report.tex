@@ -17,11 +17,15 @@
 
 \section{Summary}
 
-Alan/Diane/Phil
+We worked on the table subsystem of the ethernet switch. The table interfaces directly with the forwarding subsystem. Our 32 entry table holds source and destination addresses and provide forwarding information. It also evicts entries when the table is full based on a least recently used policy.
 
 \section{High-level Description}
 
-Alan/Diane/Phil
+Functions of table subsystem include processing frame data to determine which port, if any, each frame information should the forwarding subsystem forward to. Table subsystem’s functions are executed during either write state, or read state. Under write state, table first looks up the source address provided by forwarding. If the given source address already exists in the table, table updates the port information and the priority tag. If the given source address does not exist in the table, it gets added to the table. If the table is already full, an entry with the lowest priority tag will get evicted.
+
+The only subsystem of the switch table interfaces with is forwarding. In fact, table is located inside the forwarding subsystem, which means that table receives inputs from forwarding, and also outputs to forwarding. Forwarding provides sources address and source port pairs to store and also inputs destination addresses. Then table returns corresponding destination port ID or asserts \texttt{monitor\_not\_found} signal. Table also provides two signals to monitoring subsystem: \texttt{monitor\_not\_found} and \texttt{monitor\_access}.
+
+
 
 \newpage
 
@@ -94,7 +98,7 @@ The \texttt{monitor\_not\_found} signal is used to show that a destination addre
 
 The overall design of the table subsystem is completely original and no external sources were consulted besides VHDL language constructs. On a high level, a chain of 32 52-bit register files is used to store 52-bit vectors composed of 48-bit MAC address vectors and 4-bit port vectors. The register chain is essentially a shift register that shifts from the left-most (31st register file) to right-most (1st register file). For each load-store operation, the load is performed first, followed by the store. The load parallel-queries the 32 52-bit register files and compares the destination address with the 48-bit MAC addresses stored in the register files. If the address is found, the associated 4-bit port is returned and all the register files to the left of it plus itself assert their write-enable and take the value of the register file to the left. The left-most register file takes the value of the register-file where the destination address was found. If the address is not found, the port "1111" is returned and the table is not changed. This simulates an LRU function for the load operation. 
 
-The store operation behaves similarly. If the source address is found in the table, then the register file which the source address is found in has its source port updated. Then, like in the load operation, all register files to the left of itplus itself assert their write-enable and take the value of ther register file to the left. The left-most register file then takes the value of the register-file with the updated port. When the source address is not found in the table, then all register files have their write-enable asserted and the new source address and port and placed in the left-most register file. This operation evicts the least recently used address and port. Note that eviction can only occur on stores as the load operation always feeds the shifted-out value back into the left-most register file.
+The store operation behaves similarly. If the source address is found in the table, then the register file which the source address is found in has its source port updated. Then, like in the load operation, all register files to the left of it plus itself assert their write-enable and take the value of the register file to the left. The left-most register file then takes the value of the register-file with the updated port. When the source address is not found in the table, then all register files have their write-enable asserted and the new source address and port and placed in the left-most register file. This operation evicts the least recently used address and port. Note that eviction can only occur on stores as the load operation always feeds the shifted-out value back into the left-most register file.
 
 \texttt{monitor\_access} is always asserted after the load operation commences. The \texttt{monitor\_not\_found} signal is asserted after the load operation is attempted and the address is not found.
 
@@ -103,6 +107,16 @@ The store operation behaves similarly. If the source address is found in the tab
 In order to simplify implementation of the table subsystem, the subsystem was abstracted into several high-level modules. These modules each represent a fundamental portion of the table subsystem and they were partitioned with the simplicity of interfaces between them in mind. 
 
 \newpage
+\subsubsection{Block Diagram}
+The block diagram of table is shown in Figure~\ref{fig:block_diagram} shows interfaces between four main modules and one internal wrapper process module which selects and outputs appropriate values to internal signals according to FSM states. For example, this process module selects source address as an address to compare during the write state instead of destination address. 
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{block_diagram.png}
+  \caption{Block diagram of the whole table subsystem}
+  \label{fig:block_diagram}
+\end{figure}
+
+
 \subsubsection{Register Chain Module}
 
 The register chain module consists of 32 52-bit register files, each of which stores a 48-bit MAC address and a 4-bit port. The module takes a 32-bit write-enable signal to control the write-enables for each of the 52-bit register files. the module also takes a 52-bit input for the left-most register. The only output is a 32 by 52 vector array of the contents of the register files in the register chain. The register chain module implementation is in \texttt{register\_chain.vhd}. Table~\ref{tab:reg} shows the signal names of the intra-subsystem interface. 
@@ -136,11 +150,11 @@ The \texttt{rc\_write\_enable} signal represents the 32 register files and is as
 
 The \texttt{rc\_reg\_output} signal is a subtype of \texttt{array (0 to 31) of std\_logic\_vector(51 downto 0)} and is simply a 32 by 52 bit two dimensional vector. It outputs the contents of all 32 52-bit register files.
 
-The RTL of the register chain is shown in Figure ~\ref{fig:regchain-rtl}. The RTL shows 32 52-bit register files chained together.
+The RTL of the register chain is shown in Figure~\ref{fig:regchain-rtl}. The RTL shows 32 52-bit register files chained together.
 
 \begin{figure}[ht!]
   \centering
-    \includegraphics[width=0.5\textwidth]{register_chain_rtl.PNG}
+  	\includegraphics[width=0.5\textwidth]{register_chain_rtl.PNG}
   \caption{RTL of Register Chain}
   \label{fig:regchain-rtl}
 \end{figure}
@@ -173,11 +187,11 @@ The \texttt{cmp\_reg\_output\_address} is of type \texttt{reg\_output\_type} whi
 
 The \texttt{cmp\_compare\_result} is a 32 bit output which asserts which register files' addresses match the \texttt{cmp\_address\_to\_compare}. By design of the register chain, there can only be one match or zero matches. The 31st bit of the output represents the comparison result of the left-most register file and the 1st bit of the output represents the comparison result of the right-most register file.
 
-The RTL of the compare module is shown in Figure ~\ref{fig:compare-rtl}. The RTL shows 32 48-bit comparators in parallel.
+The RTL of the compare module is shown in Figure~\ref{fig:compare-rtl}. The RTL shows 32 48-bit comparators in parallel.
 
 \begin{figure}[ht!]
   \centering
-    \includegraphics[width=0.25\textwidth]{compare_rtl.PNG}
+  	\includegraphics[width=0.25\textwidth]{compare_rtl.PNG}
   \caption{RTL of Compare Module}
   \label{fig:compare-rtl}
 \end{figure}
@@ -226,11 +240,11 @@ In the end, the three designs were compared using compilation time and logic gat
 
 The \texttt{cpt\_write\_enable} signal is a 32-bit vector that leads to the register chain write-enable signal. This signal is state-dependent. In the reset state, the signal is simply all 0s. In the read state, we assert all the bits left of the asserted bit in the \texttt{cpt\_compare\_result} vector, inclusive. This way, we overwrite all the register files left of and including the register file where we found the address matching the destination address. Note that the implementation still works when none of the \texttt{cpt\_compare\_result} vector bits are asserted since then none of the \texttt{cpt\_write\_enable} bits will be asserted, which is the expected behavior. In the write state, asserting all the bits left of the asserted bit in the \texttt{cpt\_compare\_result} vector still works when we do find a match. The write state differs from the read state when we do not find the address. In the write state, when we do not find the address, we simply assert every bit in the \texttt{cpt\_write\_enable} vector since all register chain contents will be shifted to make room for the new address and the least recently used address to port mapping will be evicted.
 
-The RTL of the compute module is shown in Figure ~\ref{fig:compute-rtl}. The RTL shows the parallel muxes for the first stage of the \texttt{first\_value} signal processing and OR gates for the second stage. For the \texttt{write\_enable} signal, the left-hot encoder is RTL'd into a series of comparators whose outputs feed into muxes. 
+The RTL of the compute module is shown in Figure~\ref{fig:compute-rtl}. The RTL shows the parallel muxes for the first stage of the \texttt{first\_value} signal processing and OR gates for the second stage. For the \texttt{write\_enable} signal, the left-hot encoder is RTL'd into a series of comparators whose outputs feed into muxes. 
 
 \begin{figure}[ht!]
   \centering
-    \includegraphics[width=0.75\textwidth]{compute_rtl.PNG}
+  	\includegraphics[width=0.75\textwidth]{compute_rtl.PNG}
   \caption{RTL of Compute Module}
   \label{fig:compute-rtl}
 \end{figure}
@@ -270,16 +284,16 @@ The \texttt{FSM} module is responsible for outputting control signals and latchi
 
 The \texttt{fsm\_clock} and \texttt{fsm\_reset} signals are passed to the FSM module from the inter-subsystem interface. The positive clock edge is used to advance state (by assigning next state to current state) while the asynchronous reset signal is used to put the FSM back in the reset state. 
 
-The \texttt{fsm\_trigger} signal is also passed directly from the inter-subsystem interface and is used to determine the next state. When the FSM is in the reset state, if the \texttt{fsm\_trigger} signal is asserted, then the next state is the read state. If the \texttt{fsm\_trigger} signal is not asserted, then the next state is simply the reset state. These state transitions are covered in detail in Figure ~\ref{fig:fsm-transition}. The state transition diagram shows how the \texttt{trigger} input affects the next-state. Note that the next-state becomes the current state only upon the positive clock edge, so the only point in time the \texttt{trigger} is relevant is during the positive clock edge.
+The \texttt{fsm\_trigger} signal is also passed directly from the inter-subsystem interface and is used to determine the next state. When the FSM is in the reset state, if the \texttt{fsm\_trigger} signal is asserted, then the next state is the read state. If the \texttt{fsm\_trigger} signal is not asserted, then the next state is simply the reset state. These state transitions are covered in detail in Figure~\ref{fig:fsm-transition}. The state transition diagram shows how the \texttt{trigger} input affects the next-state. Note that the next-state becomes the current state only upon the positive clock edge, so the only point in time the \texttt{trigger} is relevant is during the positive clock edge.
 
 \begin{figure}[ht!]
   \centering
-    \includegraphics[width=0.75\textwidth]{fsm_updated_state_transition_diagram.PNG}
+  	\includegraphics[width=0.75\textwidth]{fsm_updated_state_transition_diagram.PNG}
   \caption{FSM State Transition Diagram}
   \label{fig:fsm-transition}
 \end{figure}
 
-For clarity, Table ~\ref{tab:fsm-table} shows the transition cases in tabular form.
+For clarity, Table~\ref{tab:fsm-table} shows the transition cases in tabular form.
 
 \begin{table}[ht]
     \begin{center}
@@ -311,16 +325,15 @@ The \texttt{fsm\_output\_ready} signal is an output control signal asserting tha
 
 The \texttt{fsm\_destination\_port} signal is the output signal that is exposed in the inter-subsystem interface. It is presented as a 4-bit one-hot encoded port if the destination address was successfully found and as "1111" if not found. Note that since this signal must be valid at the positive edge of the \texttt{output\_ready} signal which is directly triggered by the positive clock edge, we change the \texttt{destination\_port} signal on the negative clock edge so there are no race conditions. The value the signal takes on when we do find a destination address is simply the 4 port bits of the 52-bit register file contents that yielded a successful comparison with the destination address.
 
-The RTL of the FSM is shown in Figure ~\ref{fig:fsm-rtl}. The RTL is fairly self-explanatory and most importantly contains the state register which stores the current state of the FSM.
+The RTL of the FSM is shown in Figure~\ref{fig:fsm-rtl}. The RTL is fairly self-explanatory and most importantly contains the state register which stores the current state of the FSM.
 
 \begin{figure}[ht!]
   \centering
-    \includegraphics[width=1.0\textwidth]{fsm_rtl.PNG}
+  	\includegraphics[width=1.0\textwidth]{fsm_rtl.PNG}
   \caption{RTL of FSM}
   \label{fig:fsm-rtl}
 \end{figure}
 
-\newpage
 \subsubsection{Address Table Module}
 
 The address table module is simply a wrapper that contains the inter-subsystem interface definitions in addition to the mappings and instantiations of all the intra-subsystem modules. The wrapper also takes care of certain functionalities that don't belong in any other modules, such as latching inputs and error correcting. The wrapper implementation can be found in \texttt{address\_table.vhd}.
@@ -331,11 +344,11 @@ The wrapper latches inputs in two layers. This is because we must keep the latch
 
 The wrapper is also used to perform some minor error correction. This "error correction" is more "error prevention" than strict error correction. One place this error prevention is used is during the assertion of asynchronous reset. When the \texttt{reset} signal is asserted, all other inputs are simply ignored and set to all 0s. Additionally, depending on state, certain module input signals and inter-subsystem interface signals are hardcoded, such as setting \texttt{write\_enable} to all 0s in the reset state and setting \texttt{monitor\_access} to 1 during only the read state. These signals should already have their hardcoded values, but this check simply ignores any potentially incorrect values, saving time in development. In a more strict production environment, these error prevention snippets would be removed and the output signals for the subsystems would be more vigorously tested.
 
-The RTL for the entire subsystem is shown in Figure ~\ref{fig:table-rtl}. The RTL shows all the internal modules in addition to the processes that occur in the wrapper itself.
+The RTL for the entire subsystem is shown in Figure~\ref{fig:table-rtl}. The RTL shows all the internal modules in addition to the processes that occur in the wrapper itself.
 
 \begin{figure}[ht!]
   \centering
-    \includegraphics[width=0.5\textwidth]{table_rtl.PNG}
+  	\includegraphics[width=0.5\textwidth]{table_rtl.PNG}
   \caption{RTL of Table Subsystem}
   \label{fig:table-rtl}
 \end{figure}
@@ -343,7 +356,7 @@ The RTL for the entire subsystem is shown in Figure ~\ref{fig:table-rtl}. The RT
 \newpage
 \section{Simulation Results}
 
-A timing simulation was run on the full subsystem. Every input and output signal defined in the inter-subsystem interface was monitored. The basic simulation (Figure XXXXXXXXXXXXXXXXXXXXXXXXX) tested the following functionalities:
+Timing simulations were run on the full subsystem. Every input and output signal defined in the inter-subsystem interface was monitored. The basic simulation (Figures 7 and 8) tested the following functionalities:
 
 \begin{enumerate}
 \item A stored address-port mapping can be retrieved a trigger-cycle after it is stored
@@ -355,12 +368,72 @@ A timing simulation was run on the full subsystem. Every input and output signal
 \item \texttt{monitor\_access} and \texttt{monitor\_not\_found} are asserted during a positive clock edge
 \end{enumerate}
 
-A longer waveform simulation (Figure XXXXXXXXXXXXXXXXXXXX) was also performed and tested that addresses that are not read or written to (updated) are evicted from the table.
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{complete_test1.png}
+  \caption{First complete test demonstrating functionalities 1, 2, and 5}
+  \label{fig:complete-test1}
+\end{figure}
 
-In addition to simulating the full subsystem, the individual modules within the table subsystem were also simulated as a form of testing. 
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{complete_test2.png}
+  \caption{Second complete test demonstrating functionalities 3, 4, 6, and 7}
+  \label{fig:complete-test2}
+\end{figure}
 
-Alan/Diane/Phil do subsystem module simulations
+\newpage
 
+A longer waveform simulation (Figure 9) was also performed and tested that addresses that are not read or written to (updated) are evicted from the table.
+
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{eviction_test.png}
+  \caption{Demonstration of address eviction}
+  \label{fig:eviction-test}
+\end{figure}
+
+In addition to simulating the full subsystem, the following tests were also run on individual modules to confirm their correct operation:
+\begin{enumerate}
+\item The compare module correctly selects the register with a matching source address
+
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{compare.png}
+  \caption{Test of the compare module}
+  \label{fig:eviction}
+\end{figure}
+
+\item The compute module correctly shifts the correct number of registers while it is in the read state and a matching register has been found
+
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{compute_read.png}
+  \caption{Test of the compute module in the read state}
+  \label{fig:compute_read}
+\end{figure}
+
+\newpage
+
+\item The compute module shifts all of the registers when it is in the write state and a matching register has not been found
+
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{compute_write.png}
+  \caption{Test of the compute module in the write state}
+  \label{fig:compute_write}
+\end{figure}
+
+\item The register chain will propagate a value entered into its first register
+
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{rc_propagate.png}
+  \caption{Test of address propagation in the register chain}
+  \label{fig:rc_propagate}
+\end{figure}
+
+\end{enumerate}
 
 \section{Hardware Test Results}
 
@@ -412,7 +485,7 @@ The \texttt{test\_not\_found} signal is asserted when the all four bits of the \
 
 While the human-interface test was sufficient for demonstrating that the table worked by manually setting inputs and validating outputs, it is not a reliable way of verifying operations such as eviction due to the huge number of operations and potential for human error. Because of this, a memory-based hardware test was designed and implemented to allow tests to be written using ROM.
 
-The memory-based test has a ROM module that contains 1024 rows of 128-bit data. Each row contains data in the format defined in table ~\ref{tab:rom}. 
+The memory-based test has a ROM module that contains 1024 rows of 128-bit data. Each row contains data in the format defined in Table~\ref{tab:rom}. 
 
 \begin{table}[ht]
     \begin{center}
@@ -428,7 +501,7 @@ The memory-based test has a ROM module that contains 1024 rows of 128-bit data. 
         [103:100] & Expected Output & \texttt{destination\_port} \\
         \hline
         [104] & Expected Output & \texttt{monitor\_access} \\
-        \hline
+       	\hline
         [105] & Expected Output & \texttt{monitor\_not\_found} \\
         \hline
         [127:106] & N/A & Empty (all 0s) \\
@@ -438,7 +511,7 @@ The memory-based test has a ROM module that contains 1024 rows of 128-bit data. 
     \end{center}
 \end{table}
 
-The memory-based test has a hardware interface defined in table ~\ref{tab:test2}
+The memory-based test has a hardware interface defined in Table~\ref{tab:test2}
 
 \begin{table}[ht]
     \begin{center}
@@ -484,10 +557,26 @@ The \texttt{hwtest\_access\_count} and \texttt{hwtest\_not\_found\_count} counte
 
 Since the \texttt{monitor\_access} and \texttt{monitor\_not\_found} signals can be asserted at any clock cycle between when the \texttt{trigger} signal is clocked and the \texttt{output\_ready} signal is asserted, we use a register to hold each of these values and latch an assertion if one occurs. These two registers are cleared on the positive clock edge in the first state of the cycle-counter. The registers are compared to the expected \texttt{access} and \texttt{not\_found} values on the negative clock edge of the sixth state of the cycle-counter.
 
-There exist a few more nuances that can be seen in the \texttt{address\_table\_hardware\_memory\_test.vhd} file.
+There exist a few more nuances that can be seen in the \texttt{address\_table\_hardware\_memory\_test.vhd} file. Figure~\ref{fig:hardware_1} shows correct operation of the table. Note that the incorrect counters remain at 0 even as \texttt{access} and \texttt{not\_found} counters increase.
+
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{hardware_1.PNG}
+  \caption{Logic Analyzer Output Showing Correct Table Operation}
+  \label{fig:hardware_1}
+\end{figure}
+
+Figure~\ref{fig:hardware_2} shows correct operation of the eviction functionality of the table. Note that the \texttt{not\_found} counter increases while the incorrect counters remain at 0. The test case can be found in the \texttt{MIF} file and the Go script.
+
+\begin{figure}[ht!]
+  \centering
+  	\includegraphics[width=0.95\textwidth]{hardware_2.PNG}
+  \caption{Logic Analyzer Output Showing Correct Table Eviction Operation}
+  \label{fig:hardware_2}
+\end{figure}
 
 \section{Conclusion}
 
-Alan/Diane/Phil
+We were able to verify the functionality of our table subsystem through both software and hardware tests. First, we started with VHDL and created the core functionality which we tested through waveforms. Next, we created an FSM to make simulate the functionality on an FPGA, using the switches and a couple LEDs for the output. Lastly, we worked to show that the table functioned properly through the logic analyzer. Throughout the project, we had significant software and hardware challenges such as problems figuring out what was wrong with FSM and the FPGA that we were able to conquer as a team. We also had to interface with forwarding, giving them the correct signals that they expected, which turned out to work out. Overall, we enjoyed working to create a core subsystem of an ethernet switch.
 
 \end{document}
