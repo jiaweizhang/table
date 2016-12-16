@@ -9,7 +9,7 @@
 \setlength{\parindent}{0pt}%
 \title{ECE559 Table Final Report}
 \author{Jiawei Zhang, Alan Guo, Phil Foo, Diane Kim }
-\date{December 15, 2016}
+\date{December 16, 2016}
 
 \begin{document}
 
@@ -17,15 +17,15 @@
 
 \section{Summary}
 
-We worked on the table subsystem of the ethernet switch. The table interfaces directly with the forwarding subsystem. Our 32 entry table holds source and destination addresses and provide forwarding information. It also evicts entries when the table is full based on a least recently used policy.
+The table subsystem can be thought of as a map from 48-bit MAC addresses to port information that can store up to 32 entries. The table interfaces directly with the forwarding subsystem and provides a mechanism to store port information related to specific previously-stored MAC addresses.
 
 \section{High-level Description}
 
-Functions of table subsystem include processing frame data to determine which port, if any, each frame information should the forwarding subsystem forward to. Table subsystem’s functions are executed during either write state, or read state. Under write state, table first looks up the source address provided by forwarding. If the given source address already exists in the table, table updates the port information and the priority tag. If the given source address does not exist in the table, it gets added to the table. If the table is already full, an entry with the lowest priority tag will get evicted.
+Functions of the table subsystem include processing frame data to determine which port, if any, each frame information should the forwarding subsystem forward to. The table subsystem’s functions are executed during either write state, or read state. Under write state, the table first looks up the source address provided by forwarding. If the given source address already exists in the table, it updates the port information and its priority tag. If the given source address does not exist in the table, it gets added to the table. If the table is already full, an entry with the lowest priority tag will get evicted.
 
-The only subsystem of the switch table interfaces with is forwarding. In fact, table is located inside the forwarding subsystem, which means that table receives inputs from forwarding, and also outputs to forwarding. Forwarding provides sources address and source port pairs to store and also inputs destination addresses. Then table returns corresponding destination port ID or asserts \texttt{monitor\_not\_found} signal. Table also provides two signals to monitoring subsystem: \texttt{monitor\_not\_found} and \texttt{monitor\_access}.
+The only subsystem of the switch that the table interfaces with is forwarding. In fact, the table is located inside the forwarding subsystem, which means that it receives inputs from forwarding, and also outputs its results to forwarding. Forwarding provides source address and source port pairs to store and also inputs destination addresses. Then the table returns corresponding destination port ID or asserts \texttt{monitor\_not\_found} signal. Our subsystem also provides two signals to monitoring subsystem: \texttt{monitor\_not\_found} and \texttt{monitor\_access}.
 
-
+IEEE Standards 802.3 on Ethernet states various specifications on 1 Gigabit Ethernet switch. Although most specifications apply to the external interfaces only, our table subsystem still abides by specifications stated in the IEEE standards. Table provides simple management interfaces by using simple 1 bit signals to communicate with forwarding such as \texttt{trigger}, \texttt{input\_ready}, \texttt{output\_ready} . Also, table uses 1 hot encoding to simplify port ID information. One other relevant constraints that IEEE standard notes is that forwarding operation must complete within 82 cycles in order to support 100Mb/s rates for data transfer and management functions. Table function only takes 3 cycles to operate in order to support this specification.  
 
 \newpage
 
@@ -359,8 +359,8 @@ The RTL for the entire subsystem is shown in Figure~\ref{fig:table-rtl}. The RTL
 Timing simulations were run on the full subsystem. Every input and output signal defined in the inter-subsystem interface was monitored. The basic simulation (Figures 7 and 8) tested the following functionalities:
 
 \begin{enumerate}
-\item A stored address-port mapping can be retrieved a trigger-cycle after it is stored
-\item A stored address-port mapping can be retrieved multiple trigger-cycles after it is stored
+\item A stored address-port mapping can be retrieved a trigger-cycle after it is stored.
+\item A stored address-port mapping can be retrieved multiple trigger-cycles after it is stored.
 \item A stored address-port mapping can be replaced with a new port
 \item The destination port is valid upon the positive edge of the \texttt{output\_ready} signal
 \item The destination port shows "1111" when the address does not exist in the table
@@ -395,7 +395,7 @@ A longer waveform simulation (Figure 9) was also performed and tested that addre
 
 In addition to simulating the full subsystem, the following tests were also run on individual modules to confirm their correct operation:
 \begin{enumerate}
-\item The compare module correctly selects the register with a matching source address
+\item The compare module correctly selects the register with a matching source address. This test demonstrates that we will correctly select the register whose address matches the one inputted by forwarding.
 
 \begin{figure}[ht!]
   \centering
@@ -404,7 +404,7 @@ In addition to simulating the full subsystem, the following tests were also run 
   \label{fig:eviction}
 \end{figure}
 
-\item The compute module correctly shifts the correct number of registers while it is in the read state and a matching register has been found
+\item The compute module correctly shifts the correct number of registers while it is in the read state and a matching register has been found. This test demonstrates that we will correctly write-enable the proper registers in our register-chain.
 
 \begin{figure}[ht!]
   \centering
@@ -415,7 +415,7 @@ In addition to simulating the full subsystem, the following tests were also run 
 
 \newpage
 
-\item The compute module shifts all of the registers when it is in the write state and a matching register has not been found
+\item The compute module shifts all of the registers when it is in the write state and a matching register has not been found. Important for ensuring that old values will eventually become evicted from the register chain since the resulting signal will write-enable every register in the chain.
 
 \begin{figure}[ht!]
   \centering
@@ -424,7 +424,7 @@ In addition to simulating the full subsystem, the following tests were also run 
   \label{fig:compute_write}
 \end{figure}
 
-\item The register chain will propagate a value entered into its first register
+\item The register chain will propagate a value entered into its first register, critical for the fundamental operation of the eviction system.
 
 \begin{figure}[ht!]
   \centering
@@ -577,6 +577,6 @@ Figure~\ref{fig:hardware_2} shows correct operation of the eviction functionalit
 
 \section{Conclusion}
 
-We were able to verify the functionality of our table subsystem through both software and hardware tests. First, we started with VHDL and created the core functionality which we tested through waveforms. Next, we created an FSM to make simulate the functionality on an FPGA, using the switches and a couple LEDs for the output. Lastly, we worked to show that the table functioned properly through the logic analyzer. Throughout the project, we had significant software and hardware challenges such as problems figuring out what was wrong with FSM and the FPGA that we were able to conquer as a team. We also had to interface with forwarding, giving them the correct signals that they expected, which turned out to work out. Overall, we enjoyed working to create a core subsystem of an ethernet switch.
+We were able to verify the functionality of our table subsystem through both software and hardware tests. Interfacing with the forwarding subsystem was completely seamless and the table functioned correctly as part of the forwarding system. Overall, we enjoyed creating a core subsystem of an ethernet switch.
 
 \end{document}
